@@ -7,12 +7,17 @@ import HintCard from './HintCard';
 import Image from 'next/image';
 
 export default function Game() {
-  const [currentPainting, setCurrentPainting] = useState<Painting>(initialPaintings[0]);
+  const [currentPainting, setCurrentPainting] = useState<Painting | null>(null);
   const [guess, setGuess] = useState('');
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [unlockedHints, setUnlockedHints] = useState<Record<string, string>>({});
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    // Initialize with static data immediately on mount
+    setCurrentPainting(initialPaintings[0]);
+
     // Attempt to load fresh data from API
     fetch('/api/paintings?t=' + new Date().getTime())
       .then((res) => {
@@ -27,6 +32,15 @@ export default function Game() {
       })
       .catch((e) => console.log('Using default static data'));
   }, []);
+
+  // Avoid hydration mismatch by waiting for mount
+  if (!mounted || !currentPainting) {
+      return (
+        <div className="flex justify-center items-center min-h-[50vh]">
+            <div className="text-gray-500 animate-pulse">Loading masterpiece...</div>
+        </div>
+      );
+  }
 
   const handleGuess = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,10 +62,12 @@ export default function Game() {
           <Image
             src={currentPainting.imageUrl}
             alt={currentPainting.title}
-            layout="fill"
-            objectFit="contain"
-            style={{ filter: isCorrect ? 'none' : currentPainting.blurLevel }}
-            className="transition-all duration-500"
+            fill
+            className="object-contain transition-all duration-500"
+            sizes="(max-width: 768px) 100vw, 50vw"
+            style={{ 
+                filter: isCorrect ? 'none' : currentPainting.blurLevel 
+            }}
           />
         </div>
         {isCorrect && (
