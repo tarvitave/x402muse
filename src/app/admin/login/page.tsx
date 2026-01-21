@@ -18,6 +18,7 @@ export default function AdminLogin() {
     });
 
     if (res.ok) {
+      router.refresh(); // Ensure the middleware sees the new cookie
       router.push('/admin/dashboard');
     } else {
       setError('Invalid credentials');

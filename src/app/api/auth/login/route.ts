@@ -10,9 +10,10 @@ export async function POST(request: Request) {
     // Set cookie on the response object
     response.cookies.set('admin_session', 'valid', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Allow non-https for initial deployment/testing
       maxAge: 60 * 60 * 24, // 1 day
       path: '/',
+      sameSite: 'lax',
     });
     
     return response;
