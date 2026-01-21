@@ -6,9 +6,9 @@ const TREASURY_WALLET_ADDRESS = 'YourTreasuryWalletAddr'; // Replace with your a
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const { id } = await params;
   const signature = req.headers.get('X-Payment-Signature');
 
   const allHints = paintings.flatMap((p) => p.hints);
