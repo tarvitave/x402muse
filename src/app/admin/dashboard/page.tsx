@@ -28,7 +28,8 @@ export default function AdminDashboard() {
 
   const loadData = async () => {
       try {
-          const res = await fetch('/paintings.json?' + new Date().getTime()); // Bust cache
+          // Fetch from API instead of static file to avoid caching/serving issues in Docker
+          const res = await fetch('/api/paintings?t=' + new Date().getTime());
           if (res.ok) {
               const data = await res.json();
               // Sort by Source, then by ID to keep consistent

@@ -13,8 +13,8 @@ export default function Game() {
   const [unlockedHints, setUnlockedHints] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    // Attempt to load fresh data from seeded file
-    fetch('/paintings.json')
+    // Attempt to load fresh data from API
+    fetch('/api/paintings?t=' + new Date().getTime())
       .then((res) => {
         if (res.ok) return res.json();
         throw new Error('No seed data');

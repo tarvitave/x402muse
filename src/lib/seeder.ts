@@ -149,9 +149,11 @@ export async function seedPaintings() {
 
   const dir = path.dirname(OUTPUT_FILE);
   if (!fs.existsSync(dir)) {
+    console.log(`Creating directory: ${dir}`);
     fs.mkdirSync(dir, { recursive: true });
   }
 
+  console.log(`Writing ${gameReadyPaintings.length} items to ${OUTPUT_FILE}`);
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(gameReadyPaintings, null, 2));
   return gameReadyPaintings.length;
 }
