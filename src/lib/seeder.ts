@@ -1,11 +1,8 @@
 import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
+import prisma from './prisma';
 
 // CONFIGURATION
 const RIJKS_API_KEY = process.env.RIJKS_API_KEY || ''; 
-// Use the public directory so the file is accessible via HTTP and writable in Docker usually
-const OUTPUT_FILE = path.join(process.cwd(), 'public/paintings.json');
 
 // Interface (matching required schema)
 interface Painting {
@@ -130,7 +127,6 @@ export async function seedPaintings() {
     hints: [
       {
         id: `${p.id}-1`,
-        type: 'location',
         label: 'Where is it displayed?',
         content: p.hints.location,
         costSol: 0.01,
@@ -138,7 +134,6 @@ export async function seedPaintings() {
       },
       {
         id: `${p.id}-2`,
-        type: 'bio',
         label: 'Artist Context',
         content: p.hints.bio,
         costSol: 0.01,
@@ -147,15 +142,35 @@ export async function seedPaintings() {
     ]
   }));
 
-  const dir = path.dirname(OUTPUT_FILE);
-  if (!fs.existsSync(dir)) {
-    console.log(`Creating directory: ${dir}`);
-    fs.mkdirSync(dir, { recursive: true });
+  // DB WRITE
+  console.log('Seeding database...');
+  
+  // Clear existing
+  await prisma.hint.deleteMany({});
+  await prisma.painting.deleteMany({});
+
+  // Insert new
+  for (const p of gameReadyPaintings) {
+      await prisma.painting.create({
+          data: {
+              id: p.id,
+              source: p.source,
+              title: p.title,
+              artist: p.artist,
+              imageUrl: p.imageUrl,
+              hints: {
+                  create: p.hints.map(h => ({
+                      id: h.id,
+                      label: h.label,
+                      content: h.content,
+                      costSol: h.costSol,
+                      isLocked: h.isLocked
+                  }))
+              }
+          }
+      });
   }
 
-  console.log(`Writing ${gameReadyPaintings.length} items to ${OUTPUT_FILE}`);
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(gameReadyPaintings, null, 2));
-  
   // Calculate breakdown by source
   const breakdown: Record<string, number> = {};
   gameReadyPaintings.forEach(p => {

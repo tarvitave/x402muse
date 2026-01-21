@@ -40,9 +40,14 @@ jobs:
           docker stop muse-app || true
           docker rm muse-app || true
 
-          # Run New Container
+          # Create persistent data directory on host
+          mkdir -p ~/muse_data
+
+          # Run New Container with Persistent Volume for SQLite
           docker run -d \
             -p 80:3000 \
             --name muse-app \
             --restart always \
+            -v ~/muse_data:/app/prisma/db \
+            -e DATABASE_URL="file:/app/prisma/db/prod.db" \
             muse-app

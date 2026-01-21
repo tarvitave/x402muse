@@ -1,21 +1,25 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import prisma from '@/lib/prisma';
 
-// Define the path to match where the seeder writes
-const DATA_FILE = path.join(process.cwd(), 'public', 'paintings.json');
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    if (!fs.existsSync(DATA_FILE)) {
-      return NextResponse.json([], { status: 200 }); // Return empty if not seeded yet
-    }
+    const data = await prisma.painting.findMany({
+      include: {
+        hints: true
+      }
+    });
     
-    const fileContents = fs.readFileSync(DATA_FILE, 'utf-8');
-    const data = JSON.parse(fileContents);
-    return NextResponse.json(data);
+    // Add runtime fields that aren't in DB but needed by frontend
+    const enriched = data.map(p => ({
+        ...p,
+        blurLevel: 'blur(10px)'
+    }));
+
+    return NextResponse.json(enriched);
   } catch (error) {
-    console.error('Error reading paintings file:', error);
+    console.error('Error reading paintings from DB:', error);
     return NextResponse.json({ error: 'Failed to load data' }, { status: 500 });
   }
 }

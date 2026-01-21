@@ -1,0 +1,31 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Painting {
+  id        String   @id
+  source    String?
+  title     String
+  artist    String
+  imageUrl  String
+  hints     Hint[]
+  createdAt DateTime @default(now())
+}
+
+model Hint {
+  id         String   @id
+  paintingId String
+  label      String
+  content    String
+  costSol    Float    @default(0.01)
+  isLocked   Boolean  @default(true)
+  painting   Painting @relation(fields: [paintingId], references: [id], onDelete: Cascade)
+}
