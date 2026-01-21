@@ -122,6 +122,7 @@ export async function seedPaintings() {
   
   const gameReadyPaintings = all.map(p => ({
     id: p.id,
+    source: p.source,
     imageUrl: p.imageUrl,
     blurLevel: 'blur(10px)',
     artist: p.artist,
