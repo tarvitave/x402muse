@@ -33,10 +33,20 @@ jobs:
         timeout: 30m
         command_timeout: 30m
         script: |
+          # 1. Setup Swap to prevent OOM kills during build (if not exists)
+          if [ ! -f /swapfile ]; then
+              fallocate -l 2G /swapfile
+              chmod 600 /swapfile
+              mkswap /swapfile
+              swapon /swapfile
+              echo '/swapfile none swap sw 0 0' >> /etc/fstab
+              echo "Created 2GB swap file"
+          fi
+
           cd ~/x402muse
           
-          # Build Docker Image
-          docker build -t muse-app .
+          # 2. Build Docker Image (with progress plain to see logs)
+          docker build --progress=plain -t muse-app .
 
           # Cleanup Old Container
           docker stop muse-app || true
