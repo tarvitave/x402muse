@@ -57,7 +57,12 @@ export default function AdminDashboard() {
       const res = await fetch('/api/admin/seed', { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        setMessage(`Success! Seeded ${data.count} paintings.`);
+        let msg = `Success! Seeded ${data.count} paintings.`;
+        if (data.breakdown) {
+            const details = Object.entries(data.breakdown).map(([k, v]) => `${k}: ${v}`).join(', ');
+            msg += ` [${details}]`;
+        }
+        setMessage(msg);
         loadData(); // Refresh list
       } else {
         setMessage(`Error: ${data.error}`);
@@ -149,9 +154,9 @@ export default function AdminDashboard() {
                                         <Image 
                                             src={p.imageUrl} 
                                             alt={p.title} 
-                                            layout="fill" 
-                                            objectFit="cover" 
-                                            className="rounded"
+                                            fill
+                                            className="object-cover rounded"
+                                            sizes="64px"
                                         />
                                     </div>
                                 </td>

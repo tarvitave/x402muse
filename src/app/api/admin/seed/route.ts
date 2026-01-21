@@ -12,8 +12,8 @@ export async function POST() {
   }
 
   try {
-    const count = await seedPaintings();
-    return NextResponse.json({ success: true, count });
+    const result = await seedPaintings();
+    return NextResponse.json({ success: true, ...result });
   } catch (error) {
     console.error('Seeding error:', error);
     return NextResponse.json({ error: 'Failed to seed data' }, { status: 500 });

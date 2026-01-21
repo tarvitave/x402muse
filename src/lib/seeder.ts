@@ -155,5 +155,13 @@ export async function seedPaintings() {
 
   console.log(`Writing ${gameReadyPaintings.length} items to ${OUTPUT_FILE}`);
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(gameReadyPaintings, null, 2));
-  return gameReadyPaintings.length;
+  
+  // Calculate breakdown by source
+  const breakdown: Record<string, number> = {};
+  gameReadyPaintings.forEach(p => {
+    const s = p.source || 'Unknown';
+    breakdown[s] = (breakdown[s] || 0) + 1;
+  });
+
+  return { count: gameReadyPaintings.length, breakdown };
 }

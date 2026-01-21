@@ -8,6 +8,18 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'upload.wikimedia.org',
       },
+      {
+        protocol: 'https',
+        hostname: 'www.artic.edu',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.metmuseum.org',
+      },
+      {
+        protocol: 'https',
+        hostname: 'collectionapi.metmuseum.org',
+      },
     ],
   },
   /* config options here */
