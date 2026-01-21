@@ -1,0 +1,42 @@
+name: Deploy to Droplet
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Deploy via SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.DO_HOST }}
+        username: root
+        key: ${{ secrets.DO_SSH_KEY }}
+        script: |
+          # 1. Setup/Update directory
+          mkdir -p ~/x402muse
+          cd ~/x402muse
+          
+          # Check if it's a git repo, if not clone, else pull
+          if [ ! -d ".git" ]; then
+            git clone https://github.com/tarvitave/x402muse.git .
+          else
+            git pull origin main
+          fi
+
+          # 2. Build Docker Image
+          docker build -t muse-app .
+
+          # 3. Cleanup old container (if exists)
+          docker stop muse-app || true
+          docker rm muse-app || true
+
+          # 4. Run new container
+          # Maps Droplet Port 80 -> Container Port 3000
+          docker run -d \
+            -p 80:3000 \
+            --name muse-app \
+            --restart always \
+            muse-app
