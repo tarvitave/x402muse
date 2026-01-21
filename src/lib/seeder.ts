@@ -41,7 +41,7 @@ async function fetchAIC(): Promise<Painting[]> {
       params: {
         q: 'painting',
         'query[term][is_public_domain]': true,
-        limit: 20, // Reduced for speed in demo
+        limit: 60, // Increased to hit ~100 total
         fields: 'id,title,artist_display,date_display,medium_display,image_id,place_of_origin,artist_title'
       }
     });
@@ -74,7 +74,7 @@ async function fetchMet(): Promise<Painting[]> {
 
     if (!searchRes.data.objectIDs) return [];
 
-    const objectIDs = searchRes.data.objectIDs.slice(0, 20); // Reduced for speed
+    const objectIDs = searchRes.data.objectIDs.slice(0, 60); // Increased to hit ~100 total
     const results: Painting[] = [];
     
     // Simple serial fetch for stability
