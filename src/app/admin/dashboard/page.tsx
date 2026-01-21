@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 
 interface Hint {
     id: string;
@@ -198,12 +197,10 @@ export default function AdminDashboard() {
                                 </td>
                                 <td className="p-3">
                                     <div className="relative h-16 w-16">
-                                        <Image 
+                                        <img
                                             src={p.imageUrl} 
-                                            alt={p.title} 
-                                            fill
-                                            className="object-cover rounded"
-                                            sizes="64px"
+                                            alt={p.title}
+                                            className="object-cover rounded w-full h-full"
                                         />
                                     </div>
                                 </td>

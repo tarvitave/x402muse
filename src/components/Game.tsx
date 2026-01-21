@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { paintings as initialPaintings } from '@/data/paintings';
 import { Painting, Hint } from '@/lib/types';
 import HintCard from './HintCard';
-import Image from 'next/image';
 
 export default function Game() {
   const [currentPainting, setCurrentPainting] = useState<Painting | null>(null);
@@ -59,12 +58,10 @@ export default function Game() {
     <div className="flex flex-col md:flex-row gap-8 p-8">
       <div className="flex-1">
         <div className="relative w-full h-96">
-          <Image
+          <img
             src={currentPainting.imageUrl}
             alt={currentPainting.title}
-            fill
-            className="object-contain transition-all duration-500"
-            sizes="(max-width: 768px) 100vw, 50vw"
+            className="absolute inset-0 w-full h-full object-contain transition-all duration-500"
             style={{ 
                 filter: isCorrect ? 'none' : currentPainting.blurLevel 
             }}
