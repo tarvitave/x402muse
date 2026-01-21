@@ -50,7 +50,7 @@ export default function Game() {
             value={guess}
             onChange={(e) => setGuess(e.target.value)}
             placeholder="Guess the artist..."
-            className="w-full p-2 bg-gray-800 border border-gray-600 rounded"
+            className="w-full p-2 bg-gray-800 text-white border border-gray-600 rounded placeholder-gray-400 focus:outline-none focus:border-yellow-500"
           />
           <button type="submit" className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
             Submit Guess
