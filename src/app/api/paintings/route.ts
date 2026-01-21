@@ -6,6 +6,9 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const data = await prisma.painting.findMany({
+      where: {
+        active: true
+      },
       include: {
         hints: true
       }

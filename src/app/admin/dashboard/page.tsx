@@ -15,6 +15,7 @@ interface Painting {
     title: string;
     artist: string;
     imageUrl: string;
+    active: boolean;
     hints: Hint[];
 }
 
@@ -25,12 +26,25 @@ export default function AdminDashboard() {
   const [message, setMessage] = useState('');
   const [paintings, setPaintings] = useState<Painting[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{ title: string; artist: string }>({ title: '', artist: '' });
 
   const loadData = async () => {
       try {
-          // Fetch from API instead of static file to avoid caching/serving issues in Docker
-          const res = await fetch('/api/paintings?t=' + new Date().getTime());
-          if (res.ok) {
+          // Fetch from API instead of static file
+          // Note: We need a new admin-specific endpoint that fetches ALL (even disabled) for the dashboard
+          // but reuse the main one for now or add a query param?
+          // Since the main one filters active=true, we actually won't see disabled ones there.
+          // Let's create a dedicated admin fetch or assume the main API allows a toggle via param?
+          // For now, let's fix the API to allow admin override or just create a specific fetcher.
+          // Or easier: Just use the seeder API route (POST) response? No.
+          // For simplicity, I'll update the loadData to fetch from a new admin-list endpoint or just use the seed output?
+          // Actually, I need to see disabled items. 
+          // Hotfix: I'll use the prisma API directly via a server action or new route?
+          // Let's try fetching from a new endpoint /api/admin/paintings
+          
+          const res = await fetch('/api/admin/paintings/list?t=' + new Date().getTime());
+           if (res.ok) {
               const data = await res.json();
               // Sort by Source, then by ID to keep consistent
               const sorted = data.sort((a: Painting, b: Painting) => {
@@ -39,7 +53,6 @@ export default function AdminDashboard() {
                   return sourceA.localeCompare(sourceB);
               });
               setPaintings(sorted);
-              setCurrentPage(1);
           }
       } catch (e) {
           console.error("Failed to load current data");
@@ -49,6 +62,40 @@ export default function AdminDashboard() {
   useEffect(() => {
       loadData();
   }, []);
+
+  const toggleActive = async (id: string, currentStatus: boolean) => {
+      try {
+          const res = await fetch(`/api/admin/paintings/${id}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ active: !currentStatus })
+          });
+          if (res.ok) {
+              setPaintings(prev => prev.map(p => p.id === id ? { ...p, active: !currentStatus } : p));
+          }
+      } catch (e) {
+          alert('Failed to update status');
+      }
+  };
+
+  const startEdit = (p: Painting) => {
+      setEditingId(p.id);
+      setEditForm({ title: p.title, artist: p.artist });
+  };
+
+  const saveEdit = async (id: string) => {
+      try {
+          const res = await fetch(`/api/admin/paintings/${id}`, {
+              method: 'PATCH',
+              body: JSON.stringify(editForm)
+          });
+          if (res.ok) {
+              setPaintings(prev => prev.map(p => p.id === id ? { ...p, ...editForm } : p));
+              setEditingId(null);
+          }
+      } catch (e) {
+          alert('Failed to save changes');
+      }
+  };
 
   const runSeeder = async () => {
     setLoading(true);
@@ -132,13 +179,13 @@ export default function AdminDashboard() {
                         <tr className="text-gray-400 border-b border-gray-700">
                             <th className="p-3">Source</th>
                             <th className="p-3">Image</th>
-                            <th className="p-3">Title / Artist (Answer)</th>
-                            <th className="p-3">Hints</th>
+                            <th className="p-3">Status</th>
+                            <th className="p-3">Details (Editable)</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
                         {displayedPaintings.map((p) => (
-                            <tr key={p.id} className="hover:bg-gray-750">
+                            <tr key={p.id} className={`hover:bg-gray-750 ${!p.active ? 'opacity-50' : ''}`}>
                                 <td className="p-3">
                                     <span className={`px-2 py-1 rounded text-xs font-bold ${
                                         p.source === 'AIC' ? 'bg-red-900 text-red-200' : 
@@ -161,10 +208,43 @@ export default function AdminDashboard() {
                                     </div>
                                 </td>
                                 <td className="p-3">
-                                    <div className="font-bold text-white">{p.title}</div>
-                                    <div className="text-yellow-500">{p.artist}</div>
+                                    <button 
+                                        onClick={() => toggleActive(p.id, p.active)}
+                                        className={`px-3 py-1 rounded text-xs font-bold ${
+                                            p.active ? 'bg-green-600' : 'bg-red-600'
+                                        }`}
+                                    >
+                                        {p.active ? 'Active' : 'Disabled'}
+                                    </button>
                                 </td>
-                                <td className="p-3 text-sm text-gray-400">
+                                <td className="p-3">
+                                    {editingId === p.id ? (
+                                        <div className="space-y-2">
+                                            <input 
+                                                className="w-full text-black px-2 py-1 rounded" 
+                                                value={editForm.title} 
+                                                onChange={e => setEditForm({...editForm, title: e.target.value})}
+                                            />
+                                            <input 
+                                                className="w-full text-black px-2 py-1 rounded" 
+                                                value={editForm.artist} 
+                                                onChange={e => setEditForm({...editForm, artist: e.target.value})}
+                                            />
+                                            <div className="flex gap-2">
+                                                <button onClick={() => saveEdit(p.id)} className="bg-blue-600 px-3 py-1 rounded text-xs">Save</button>
+                                                <button onClick={() => setEditingId(null)} className="bg-gray-600 px-3 py-1 rounded text-xs">Cancel</button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div onClick={() => startEdit(p)} className="cursor-pointer hover:text-blue-300 group">
+                                            <div className="font-bold text-white flex items-center gap-2">
+                                                {p.title}
+                                                <span className="opacity-0 group-hover:opacity-100 text-xs text-gray-400">✎</span>
+                                            </div>
+                                            <div className="text-yellow-500">{p.artist}</div>
+                                        </div>
+                                    )}
+                                    <div className="mt-2 text-sm text-gray-400">
                                     <ul className="list-disc pl-4 space-y-1">
                                         {p.hints.map(h => (
                                             <li key={h.id}>
@@ -173,6 +253,7 @@ export default function AdminDashboard() {
                                             </li>
                                         ))}
                                     </ul>
+                                    </div>
                                 </td>
                             </tr>
                         ))}

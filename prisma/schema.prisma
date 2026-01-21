@@ -16,6 +16,7 @@ model Painting {
   title     String
   artist    String
   imageUrl  String
+  active    Boolean  @default(true)
   hints     Hint[]
   createdAt DateTime @default(now())
 }
