@@ -4,7 +4,8 @@ import path from 'path';
 
 // CONFIGURATION
 const RIJKS_API_KEY = process.env.RIJKS_API_KEY || ''; 
-const OUTPUT_FILE = path.join(process.cwd(), 'src/data/paintings.json');
+// Use the public directory so the file is accessible via HTTP and writable in Docker usually
+const OUTPUT_FILE = path.join(process.cwd(), 'public/paintings.json');
 
 // Interface (matching required schema)
 interface Painting {

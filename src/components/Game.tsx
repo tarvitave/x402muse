@@ -1,16 +1,32 @@
 'use client';
 
-import { useState } from 'react';
-import { paintings } from '@/data/paintings';
+import { useState, useEffect } from 'react';
+import { paintings as initialPaintings } from '@/data/paintings';
 import { Painting, Hint } from '@/lib/types';
 import HintCard from './HintCard';
 import Image from 'next/image';
 
 export default function Game() {
-  const [currentPainting, setCurrentPainting] = useState<Painting>(paintings[0]);
+  const [currentPainting, setCurrentPainting] = useState<Painting>(initialPaintings[0]);
   const [guess, setGuess] = useState('');
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [unlockedHints, setUnlockedHints] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    // Attempt to load fresh data from seeded file
+    fetch('/paintings.json')
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error('No seed data');
+      })
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          console.log('Loaded seeded data:', data.length);
+          setCurrentPainting(data[0]);
+        }
+      })
+      .catch((e) => console.log('Using default static data'));
+  }, []);
 
   const handleGuess = (e: React.FormEvent) => {
     e.preventDefault();
