@@ -2,6 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+      },
+    ],
+  },
   /* config options here */
   // reactCompiler: true, // Disabled to prevent potential conflicts with Solana libs
   transpilePackages: [

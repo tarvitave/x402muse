@@ -3,7 +3,8 @@ import { Painting } from "@/lib/types";
 export const paintings: Painting[] = [
   {
     id: '1',
-    imageUrl: '/paintings/starry-night.jpg',
+    // Starry Night - Public Domain
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg/1280px-Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg',
     blurLevel: 'blur(10px)',
     artist: 'Vincent van Gogh',
     title: 'The Starry Night',
@@ -36,7 +37,8 @@ export const paintings: Painting[] = [
   },
   {
     id: '2',
-    imageUrl: '/paintings/mona-lisa.jpg',
+    // Mona Lisa - Public Domain
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg/800px-Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg',
     blurLevel: 'blur(10px)',
     artist: 'Leonardo da Vinci',
     title: 'Mona Lisa',
