@@ -30,6 +30,8 @@ jobs:
         host: ${{ secrets.DO_HOST }}
         username: root
         key: ${{ secrets.DO_SSH_KEY }}
+        timeout: 30m
+        command_timeout: 30m
         script: |
           cd ~/x402muse
           
