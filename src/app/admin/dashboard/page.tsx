@@ -19,6 +19,12 @@ interface Painting {
     hints: Hint[];
 }
 
+interface EditForm {
+    title: string;
+    artist: string;
+    hints: { id: string; label: string; content: string }[];
+}
+
 const ITEMS_PER_PAGE = 20;
 
 export default function AdminDashboard() {
@@ -27,7 +33,7 @@ export default function AdminDashboard() {
   const [paintings, setPaintings] = useState<Painting[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{ title: string; artist: string }>({ title: '', artist: '' });
+  const [editForm, setEditForm] = useState<EditForm>({ title: '', artist: '', hints: [] });
 
   const loadData = async () => {
       try {
@@ -67,17 +73,45 @@ export default function AdminDashboard() {
 
   const startEdit = (p: Painting) => {
       setEditingId(p.id);
-      setEditForm({ title: p.title, artist: p.artist });
+      setEditForm({
+          title: p.title,
+          artist: p.artist,
+          hints: p.hints.map(h => ({ id: h.id, label: h.label, content: h.content }))
+      });
+  };
+
+  const updateHint = (index: number, field: 'label' | 'content', value: string) => {
+      setEditForm(prev => ({
+          ...prev,
+          hints: prev.hints.map((h, i) => i === index ? { ...h, [field]: value } : h)
+      }));
   };
 
   const saveEdit = async (id: string) => {
       try {
+          // Update painting
           const res = await fetch(`/api/admin/paintings/${id}`, {
               method: 'PATCH',
-              body: JSON.stringify(editForm)
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title: editForm.title, artist: editForm.artist })
           });
+
+          // Update hints
+          for (const hint of editForm.hints) {
+              await fetch(`/api/admin/hints/${hint.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ label: hint.label, content: hint.content })
+              });
+          }
+
           if (res.ok) {
-              setPaintings(prev => prev.map(p => p.id === id ? { ...p, ...editForm } : p));
+              setPaintings(prev => prev.map(p => p.id === id ? {
+                  ...p,
+                  title: editForm.title,
+                  artist: editForm.artist,
+                  hints: editForm.hints
+              } : p));
               setEditingId(null);
           }
       } catch (e) {
@@ -205,17 +239,42 @@ export default function AdminDashboard() {
                                 </td>
                                 <td className="p-3">
                                     {editingId === p.id ? (
-                                        <div className="space-y-2">
-                                            <input 
-                                                className="w-full text-black px-2 py-1 rounded" 
-                                                value={editForm.title} 
-                                                onChange={e => setEditForm({...editForm, title: e.target.value})}
-                                            />
-                                            <input 
-                                                className="w-full text-black px-2 py-1 rounded" 
-                                                value={editForm.artist} 
-                                                onChange={e => setEditForm({...editForm, artist: e.target.value})}
-                                            />
+                                        <div className="space-y-3">
+                                            <div>
+                                                <label className="text-xs text-gray-400">Title</label>
+                                                <input
+                                                    className="w-full text-black px-2 py-1 rounded"
+                                                    value={editForm.title}
+                                                    onChange={e => setEditForm({...editForm, title: e.target.value})}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-400">Artist</label>
+                                                <input
+                                                    className="w-full text-black px-2 py-1 rounded"
+                                                    value={editForm.artist}
+                                                    onChange={e => setEditForm({...editForm, artist: e.target.value})}
+                                                />
+                                            </div>
+                                            <div className="border-t border-gray-600 pt-2">
+                                                <label className="text-xs text-gray-400 block mb-2">Hints</label>
+                                                {editForm.hints.map((h, idx) => (
+                                                    <div key={h.id} className="mb-2 pl-2 border-l-2 border-gray-600">
+                                                        <input
+                                                            className="w-full text-black px-2 py-1 rounded text-xs mb-1"
+                                                            value={h.label}
+                                                            placeholder="Label"
+                                                            onChange={e => updateHint(idx, 'label', e.target.value)}
+                                                        />
+                                                        <input
+                                                            className="w-full text-black px-2 py-1 rounded text-xs"
+                                                            value={h.content}
+                                                            placeholder="Content"
+                                                            onChange={e => updateHint(idx, 'content', e.target.value)}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
                                             <div className="flex gap-2">
                                                 <button onClick={() => saveEdit(p.id)} className="bg-blue-600 px-3 py-1 rounded text-xs">Save</button>
                                                 <button onClick={() => setEditingId(null)} className="bg-gray-600 px-3 py-1 rounded text-xs">Cancel</button>
@@ -225,21 +284,23 @@ export default function AdminDashboard() {
                                         <div onClick={() => startEdit(p)} className="cursor-pointer hover:text-blue-300 group">
                                             <div className="font-bold text-white flex items-center gap-2">
                                                 {p.title}
-                                                <span className="opacity-0 group-hover:opacity-100 text-xs text-gray-400">✎</span>
+                                                <span className="opacity-0 group-hover:opacity-100 text-xs text-gray-400">Click to edit</span>
                                             </div>
                                             <div className="text-yellow-500">{p.artist}</div>
                                         </div>
                                     )}
-                                    <div className="mt-2 text-sm text-gray-400">
-                                    <ul className="list-disc pl-4 space-y-1">
-                                        {p.hints.map(h => (
-                                            <li key={h.id}>
-                                                <span className="text-gray-500 uppercase text-xs tracking-wider">{h.label}:</span>{' '}
-                                                <span className="text-gray-300">{h.content}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                    </div>
+                                    {editingId !== p.id && (
+                                        <div className="mt-2 text-sm text-gray-400">
+                                            <ul className="list-disc pl-4 space-y-1">
+                                                {p.hints.map(h => (
+                                                    <li key={h.id}>
+                                                        <span className="text-gray-500 uppercase text-xs tracking-wider">{h.label}:</span>{' '}
+                                                        <span className="text-gray-300">{h.content}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
                                 </td>
                             </tr>
                         ))}
