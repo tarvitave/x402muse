@@ -14,6 +14,7 @@ interface Painting {
     title: string;
     artist: string;
     imageUrl: string;
+    thumbnailPath?: string;
     active: boolean;
     hints: Hint[];
 }
@@ -186,7 +187,7 @@ export default function AdminDashboard() {
                                 <td className="p-3">
                                     <div className="relative h-16 w-16 bg-gray-700 rounded">
                                         <img
-                                            src={`/api/image-proxy?url=${encodeURIComponent(p.imageUrl)}`}
+                                            src={p.thumbnailPath || p.imageUrl}
                                             alt={p.title}
                                             className="object-cover rounded w-full h-full"
                                         />

@@ -11,14 +11,15 @@ datasource db {
 }
 
 model Painting {
-  id        String   @id
-  source    String?
-  title     String
-  artist    String
-  imageUrl  String
-  active    Boolean  @default(true)
-  hints     Hint[]
-  createdAt DateTime @default(now())
+  id            String   @id
+  source        String?
+  title         String
+  artist        String
+  imageUrl      String
+  thumbnailPath String?
+  active        Boolean  @default(true)
+  hints         Hint[]
+  createdAt     DateTime @default(now())
 }
 
 model Hint {

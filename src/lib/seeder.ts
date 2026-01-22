@@ -1,8 +1,61 @@
 import axios from 'axios';
 import prisma from './prisma';
+import sharp from 'sharp';
+import fs from 'fs';
+import path from 'path';
 
 // CONFIGURATION
-const RIJKS_API_KEY = process.env.RIJKS_API_KEY || ''; 
+const RIJKS_API_KEY = process.env.RIJKS_API_KEY || '';
+const THUMBNAILS_DIR = path.join(process.cwd(), 'public', 'thumbnails');
+const IMAGES_DIR = path.join(process.cwd(), 'public', 'images');
+
+// Ensure directories exist
+function ensureDirectories() {
+  if (!fs.existsSync(THUMBNAILS_DIR)) {
+    fs.mkdirSync(THUMBNAILS_DIR, { recursive: true });
+  }
+  if (!fs.existsSync(IMAGES_DIR)) {
+    fs.mkdirSync(IMAGES_DIR, { recursive: true });
+  }
+}
+
+// Download image and create thumbnail
+async function downloadAndCreateThumbnail(imageUrl: string, id: string): Promise<{ imagePath: string; thumbnailPath: string } | null> {
+  try {
+    const response = await axios.get(imageUrl, {
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; MuseX/1.0)',
+      },
+      timeout: 30000,
+    });
+
+    const buffer = Buffer.from(response.data);
+    const ext = 'jpg';
+    const imageFilename = `${id}.${ext}`;
+    const thumbnailFilename = `${id}_thumb.${ext}`;
+
+    const imagePath = path.join(IMAGES_DIR, imageFilename);
+    const thumbnailPath = path.join(THUMBNAILS_DIR, thumbnailFilename);
+
+    // Save original image
+    fs.writeFileSync(imagePath, buffer);
+
+    // Create thumbnail (150x150)
+    await sharp(buffer)
+      .resize(150, 150, { fit: 'cover' })
+      .jpeg({ quality: 80 })
+      .toFile(thumbnailPath);
+
+    return {
+      imagePath: `/images/${imageFilename}`,
+      thumbnailPath: `/thumbnails/${thumbnailFilename}`,
+    };
+  } catch (error) {
+    console.error(`Failed to download/process image for ${id}:`, error);
+    return null;
+  }
+} 
 
 // Interface (matching required schema)
 interface Painting {
@@ -105,79 +158,70 @@ async function fetchMet(): Promise<Painting[]> {
 }
 
 export async function seedPaintings() {
+  ensureDirectories();
+
   const [aic, met] = await Promise.all([fetchAIC(), fetchMet()]);
   let all = [...aic, ...met];
-  
+
   // Basic cleaning
   all = all.filter(p => p.imageUrl && p.title && p.artist);
   all = shuffle(all);
 
-  // Map to the internal app structure which expects 'hints' generally array, 
-  // but let's conform to the app's existing types or adapt the app.
-  // The app expects `hints: Hint[]`.
-  // We need to transform the simple seeds into the complex game object.
-  
-  const gameReadyPaintings = all.map(p => ({
-    id: p.id,
-    source: p.source,
-    imageUrl: p.imageUrl,
-    blurLevel: 'blur(10px)',
-    artist: p.artist,
-    title: p.title,
-    hints: [
-      {
-        id: `${p.id}-1`,
-        label: 'Where is it displayed?',
-        content: p.hints.location,
-        costSol: 0.01,
-        isLocked: true,
-      },
-      {
-        id: `${p.id}-2`,
-        label: 'Artist Context',
-        content: p.hints.bio,
-        costSol: 0.01,
-        isLocked: true,
-      },
-    ]
-  }));
-
   // DB WRITE
   console.log('Seeding database...');
-  
+
   // Clear existing
   await prisma.hint.deleteMany({});
   await prisma.painting.deleteMany({});
 
-  // Insert new
-  for (const p of gameReadyPaintings) {
-      await prisma.painting.create({
-          data: {
-              id: p.id,
-              source: p.source,
-              active: true,
-              title: p.title,
-              artist: p.artist,
-              imageUrl: p.imageUrl,
-              hints: {
-                  create: p.hints.map(h => ({
-                      id: h.id,
-                      label: h.label,
-                      content: h.content,
-                      costSol: h.costSol,
-                      isLocked: h.isLocked
-                  }))
-              }
-          }
-      });
-  }
-
-  // Calculate breakdown by source
+  let successCount = 0;
   const breakdown: Record<string, number> = {};
-  gameReadyPaintings.forEach(p => {
+
+  // Process each painting: download image, create thumbnail, save to DB
+  for (const p of all) {
+    console.log(`Processing: ${p.id}`);
+
+    const imageResult = await downloadAndCreateThumbnail(p.imageUrl, p.id);
+
+    if (!imageResult) {
+      console.log(`Skipping ${p.id} - failed to download image`);
+      continue;
+    }
+
+    await prisma.painting.create({
+      data: {
+        id: p.id,
+        source: p.source,
+        active: true,
+        title: p.title,
+        artist: p.artist,
+        imageUrl: imageResult.imagePath,
+        thumbnailPath: imageResult.thumbnailPath,
+        hints: {
+          create: [
+            {
+              id: `${p.id}-1`,
+              label: 'Where is it displayed?',
+              content: p.hints.location,
+              costSol: 0.01,
+              isLocked: true,
+            },
+            {
+              id: `${p.id}-2`,
+              label: 'Artist Context',
+              content: p.hints.bio,
+              costSol: 0.01,
+              isLocked: true,
+            },
+          ]
+        }
+      }
+    });
+
+    successCount++;
     const s = p.source || 'Unknown';
     breakdown[s] = (breakdown[s] || 0) + 1;
-  });
+  }
 
-  return { count: gameReadyPaintings.length, breakdown };
+  return { count: successCount, breakdown };
 }
