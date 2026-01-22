@@ -201,8 +201,8 @@ export default function AdminDashboard() {
                         <tr className="text-gray-400 border-b border-gray-700">
                             <th className="p-3">Source</th>
                             <th className="p-3">Image</th>
-                            <th className="p-3">Status</th>
-                            <th className="p-3">Details (Editable)</th>
+                            <th className="p-3">Actions</th>
+                            <th className="p-3">Details</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
@@ -228,18 +228,28 @@ export default function AdminDashboard() {
                                     </div>
                                 </td>
                                 <td className="p-3">
-                                    <button 
-                                        onClick={() => toggleActive(p.id, p.active)}
-                                        className={`px-3 py-1 rounded text-xs font-bold ${
-                                            p.active ? 'bg-green-600' : 'bg-red-600'
-                                        }`}
-                                    >
-                                        {p.active ? 'Active' : 'Disabled'}
-                                    </button>
+                                    <div className="flex flex-col gap-2">
+                                        <button
+                                            onClick={() => toggleActive(p.id, p.active)}
+                                            className={`px-3 py-1 rounded text-xs font-bold ${
+                                                p.active ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+                                            }`}
+                                        >
+                                            {p.active ? 'Active' : 'Disabled'}
+                                        </button>
+                                        {editingId !== p.id && (
+                                            <button
+                                                onClick={() => startEdit(p)}
+                                                className="px-3 py-1 rounded text-xs font-bold bg-blue-600 hover:bg-blue-700"
+                                            >
+                                                Edit
+                                            </button>
+                                        )}
+                                    </div>
                                 </td>
                                 <td className="p-3">
                                     {editingId === p.id ? (
-                                        <div className="space-y-3">
+                                        <div className="space-y-3 bg-gray-700 p-3 rounded">
                                             <div>
                                                 <label className="text-xs text-gray-400">Title</label>
                                                 <input
@@ -259,7 +269,7 @@ export default function AdminDashboard() {
                                             <div className="border-t border-gray-600 pt-2">
                                                 <label className="text-xs text-gray-400 block mb-2">Hints</label>
                                                 {editForm.hints.map((h, idx) => (
-                                                    <div key={h.id} className="mb-2 pl-2 border-l-2 border-gray-600">
+                                                    <div key={h.id} className="mb-2 pl-2 border-l-2 border-gray-500">
                                                         <input
                                                             className="w-full text-black px-2 py-1 rounded text-xs mb-1"
                                                             value={h.label}
@@ -276,30 +286,25 @@ export default function AdminDashboard() {
                                                 ))}
                                             </div>
                                             <div className="flex gap-2">
-                                                <button onClick={() => saveEdit(p.id)} className="bg-blue-600 px-3 py-1 rounded text-xs">Save</button>
-                                                <button onClick={() => setEditingId(null)} className="bg-gray-600 px-3 py-1 rounded text-xs">Cancel</button>
+                                                <button onClick={() => saveEdit(p.id)} className="bg-green-600 hover:bg-green-700 px-4 py-1 rounded text-sm font-bold">Save</button>
+                                                <button onClick={() => setEditingId(null)} className="bg-gray-600 hover:bg-gray-500 px-4 py-1 rounded text-sm">Cancel</button>
                                             </div>
                                         </div>
                                     ) : (
-                                        <div onClick={() => startEdit(p)} className="cursor-pointer hover:text-blue-300 group">
-                                            <div className="font-bold text-white flex items-center gap-2">
-                                                {p.title}
-                                                <span className="opacity-0 group-hover:opacity-100 text-xs text-gray-400">Click to edit</span>
-                                            </div>
+                                        <>
+                                            <div className="font-bold text-white">{p.title}</div>
                                             <div className="text-yellow-500">{p.artist}</div>
-                                        </div>
-                                    )}
-                                    {editingId !== p.id && (
-                                        <div className="mt-2 text-sm text-gray-400">
-                                            <ul className="list-disc pl-4 space-y-1">
-                                                {p.hints.map(h => (
-                                                    <li key={h.id}>
-                                                        <span className="text-gray-500 uppercase text-xs tracking-wider">{h.label}:</span>{' '}
-                                                        <span className="text-gray-300">{h.content}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
+                                            <div className="mt-2 text-sm text-gray-400">
+                                                <ul className="list-disc pl-4 space-y-1">
+                                                    {p.hints.map(h => (
+                                                        <li key={h.id}>
+                                                            <span className="text-gray-500 uppercase text-xs tracking-wider">{h.label}:</span>{' '}
+                                                            <span className="text-gray-300">{h.content}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </>
                                     )}
                                 </td>
                             </tr>

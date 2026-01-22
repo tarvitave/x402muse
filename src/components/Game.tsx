@@ -1,22 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { paintings as initialPaintings } from '@/data/paintings';
 import { Painting, Hint } from '@/lib/types';
 import HintCard from './HintCard';
 
-export default function Game() {
+function GameContent() {
   const [currentPainting, setCurrentPainting] = useState<Painting | null>(null);
   const [guess, setGuess] = useState('');
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [unlockedHints, setUnlockedHints] = useState<Record<string, string>>({});
-  const [mounted, setMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setMounted(true);
-    // Initialize with static data immediately on mount
-    setCurrentPainting(initialPaintings[0]);
-
     // Attempt to load fresh data from API
     fetch('/api/paintings?t=' + new Date().getTime())
       .then((res) => {
@@ -27,18 +24,23 @@ export default function Game() {
         if (Array.isArray(data) && data.length > 0) {
           console.log('Loaded seeded data:', data.length);
           setCurrentPainting(data[0]);
+        } else {
+          setCurrentPainting(initialPaintings[0]);
         }
       })
-      .catch((e) => console.log('Using default static data'));
+      .catch((e) => {
+        console.log('Using default static data');
+        setCurrentPainting(initialPaintings[0]);
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
-  // Avoid hydration mismatch by waiting for mount
-  if (!mounted || !currentPainting) {
-      return (
-        <div className="flex justify-center items-center min-h-[50vh]">
-            <div className="text-gray-500 animate-pulse">Loading masterpiece...</div>
-        </div>
-      );
+  if (isLoading || !currentPainting) {
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="text-gray-500 animate-pulse">Loading masterpiece...</div>
+      </div>
+    );
   }
 
   const handleGuess = (e: React.FormEvent) => {
@@ -59,11 +61,11 @@ export default function Game() {
       <div className="flex-1">
         <div className="relative w-full h-96">
           <img
-            src={`/api/image-proxy?url=${encodeURIComponent(currentPainting.imageUrl)}`}
+            src={currentPainting.imageUrl}
             alt={currentPainting.title}
             className="absolute inset-0 w-full h-full object-contain transition-all duration-500"
-            style={{ 
-                filter: isCorrect ? 'none' : currentPainting.blurLevel 
+            style={{
+                filter: isCorrect ? 'none' : currentPainting.blurLevel
             }}
           />
         </div>
@@ -106,3 +108,13 @@ export default function Game() {
     </div>
   );
 }
+
+// Export with SSR disabled to avoid hydration mismatch
+export default dynamic(() => Promise.resolve(GameContent), {
+  ssr: false,
+  loading: () => (
+    <div className="flex justify-center items-center min-h-[50vh]">
+      <div className="text-gray-500 animate-pulse">Loading masterpiece...</div>
+    </div>
+  ),
+});
