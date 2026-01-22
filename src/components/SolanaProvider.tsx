@@ -20,7 +20,7 @@ const SolanaProvider: FC<{ children: React.ReactNode }> = ({ children }) => {
   }, []);
 
   if (!mounted) {
-    return null;
+    return <>{children}</>;
   }
 
   return (
