@@ -1,7 +1,15 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaLibSQL } from '@prisma/adapter-libsql';
+import { createClient } from '@libsql/client';
+
+const libsql = createClient({
+  url: 'file:./dev.db',
+});
+
+const adapter = new PrismaLibSQL(libsql);
 
 const prismaClientSingleton = () => {
-  return new PrismaClient();
+  return new PrismaClient({ adapter });
 };
 
 type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>;
