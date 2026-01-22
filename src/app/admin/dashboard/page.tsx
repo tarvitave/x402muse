@@ -30,6 +30,7 @@ const ITEMS_PER_PAGE = 20;
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [paintings, setPaintings] = useState<Painting[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -37,8 +38,9 @@ export default function AdminDashboard() {
 
   const loadData = async () => {
       try {
+          setError('');
           const res = await fetch('/api/admin/paintings/list?t=' + new Date().getTime());
-           if (res.ok) {
+          if (res.ok) {
               const data = await res.json();
               // Sort by Source, then by ID to keep consistent
               const sorted = data.sort((a: Painting, b: Painting) => {
@@ -47,9 +49,13 @@ export default function AdminDashboard() {
                   return sourceA.localeCompare(sourceB);
               });
               setPaintings(sorted);
+          } else {
+              const errData = await res.json().catch(() => ({}));
+              setError(`Failed to load: ${res.status} - ${errData.error || 'Unknown error'}`);
           }
       } catch (e) {
-          console.error("Failed to load current data");
+          console.error("Failed to load current data:", e);
+          setError(`Network error: ${e instanceof Error ? e.message : 'Unknown'}`);
       }
   };
 
@@ -59,15 +65,21 @@ export default function AdminDashboard() {
 
   const toggleActive = async (id: string, currentStatus: boolean) => {
       try {
+          setError('');
           const res = await fetch(`/api/admin/paintings/${id}`, {
               method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ active: !currentStatus })
           });
           if (res.ok) {
               setPaintings(prev => prev.map(p => p.id === id ? { ...p, active: !currentStatus } : p));
+              setMessage(`Painting ${!currentStatus ? 'enabled' : 'disabled'} successfully`);
+          } else {
+              const errData = await res.json().catch(() => ({}));
+              setError(`Toggle failed: ${errData.error || res.status}`);
           }
       } catch (e) {
-          alert('Failed to update status');
+          setError(`Toggle failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
       }
   };
 
@@ -89,6 +101,7 @@ export default function AdminDashboard() {
 
   const saveEdit = async (id: string) => {
       try {
+          setError('');
           // Update painting
           const res = await fetch(`/api/admin/paintings/${id}`, {
               method: 'PATCH',
@@ -96,26 +109,34 @@ export default function AdminDashboard() {
               body: JSON.stringify({ title: editForm.title, artist: editForm.artist })
           });
 
+          if (!res.ok) {
+              const errData = await res.json().catch(() => ({}));
+              setError(`Save failed: ${errData.error || res.status}`);
+              return;
+          }
+
           // Update hints
           for (const hint of editForm.hints) {
-              await fetch(`/api/admin/hints/${hint.id}`, {
+              const hintRes = await fetch(`/api/admin/hints/${hint.id}`, {
                   method: 'PATCH',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ label: hint.label, content: hint.content })
               });
+              if (!hintRes.ok) {
+                  console.error('Failed to update hint:', hint.id);
+              }
           }
 
-          if (res.ok) {
-              setPaintings(prev => prev.map(p => p.id === id ? {
-                  ...p,
-                  title: editForm.title,
-                  artist: editForm.artist,
-                  hints: editForm.hints
-              } : p));
-              setEditingId(null);
-          }
+          setPaintings(prev => prev.map(p => p.id === id ? {
+              ...p,
+              title: editForm.title,
+              artist: editForm.artist,
+              hints: editForm.hints
+          } : p));
+          setEditingId(null);
+          setMessage('Changes saved successfully');
       } catch (e) {
-          alert('Failed to save changes');
+          setError(`Save failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
       }
   };
 
@@ -181,18 +202,32 @@ export default function AdminDashboard() {
             </button>
           </div>
           {message && (
-            <div className={`mt-4 p-3 rounded ${message.startsWith('Success') ? 'bg-green-900/50 text-green-200' : 'bg-blue-900/50 text-blue-200'}`}>
+            <div className={`mt-4 p-3 rounded ${message.startsWith('Success') ? 'bg-green-900/50 text-green-200' : message.startsWith('Error') ? 'bg-red-900/50 text-red-200' : 'bg-blue-900/50 text-blue-200'}`}>
               {message}
             </div>
           )}
         </div>
 
+        {error && (
+          <div className="bg-red-900/50 text-red-200 p-4 rounded-lg border border-red-700 mb-8">
+            <strong>Error loading data:</strong> {error}
+          </div>
+        )}
+
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <h2 className="text-xl font-semibold mb-6 flex justify-between items-center">
                 <span>Current Database</span>
-                <span className="text-sm font-normal text-gray-400">
-                    {paintings.length} items loaded (Page {currentPage} of {totalPages})
-                </span>
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={loadData}
+                        className="text-sm bg-gray-600 hover:bg-gray-500 px-3 py-1 rounded"
+                    >
+                        Refresh
+                    </button>
+                    <span className="text-sm font-normal text-gray-400">
+                        {paintings.length} items loaded (Page {currentPage} of {totalPages})
+                    </span>
+                </div>
             </h2>
             
             <div className="overflow-x-auto">
