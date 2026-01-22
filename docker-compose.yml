@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/data/dev.db
+    volumes:
+      # Persist the SQLite database
+      - app-data:/app/data
+      # Persist images and thumbnails
+      - app-images:/app/public/images
+      - app-thumbnails:/app/public/thumbnails
+    restart: unless-stopped
+
+volumes:
+  app-data:
+  app-images:
+  app-thumbnails:

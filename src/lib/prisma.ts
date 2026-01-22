@@ -4,7 +4,11 @@ import { createClient } from '@libsql/client';
 import path from 'path';
 
 // Use absolute path for database to ensure it works in all contexts
-const dbPath = process.env.DATABASE_URL || `file:${path.join(process.cwd(), 'dev.db')}`;
+// In production (Docker), use /app/data/dev.db for volume persistence
+const dbPath = process.env.DATABASE_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? `file:${path.join(process.cwd(), 'data', 'dev.db')}`
+    : `file:${path.join(process.cwd(), 'dev.db')}`);
 console.log('Database path:', dbPath);
 
 const libsql = createClient({
