@@ -59,7 +59,7 @@ export default function Game() {
       <div className="flex-1">
         <div className="relative w-full h-96">
           <img
-            src={currentPainting.imageUrl}
+            src={`/api/image-proxy?url=${encodeURIComponent(currentPainting.imageUrl)}`}
             alt={currentPainting.title}
             className="absolute inset-0 w-full h-full object-contain transition-all duration-500"
             style={{ 

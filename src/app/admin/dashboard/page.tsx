@@ -30,18 +30,6 @@ export default function AdminDashboard() {
 
   const loadData = async () => {
       try {
-          // Fetch from API instead of static file
-          // Note: We need a new admin-specific endpoint that fetches ALL (even disabled) for the dashboard
-          // but reuse the main one for now or add a query param?
-          // Since the main one filters active=true, we actually won't see disabled ones there.
-          // Let's create a dedicated admin fetch or assume the main API allows a toggle via param?
-          // For now, let's fix the API to allow admin override or just create a specific fetcher.
-          // Or easier: Just use the seeder API route (POST) response? No.
-          // For simplicity, I'll update the loadData to fetch from a new admin-list endpoint or just use the seed output?
-          // Actually, I need to see disabled items. 
-          // Hotfix: I'll use the prisma API directly via a server action or new route?
-          // Let's try fetching from a new endpoint /api/admin/paintings
-          
           const res = await fetch('/api/admin/paintings/list?t=' + new Date().getTime());
            if (res.ok) {
               const data = await res.json();
@@ -196,9 +184,9 @@ export default function AdminDashboard() {
                                     </span>
                                 </td>
                                 <td className="p-3">
-                                    <div className="relative h-16 w-16">
+                                    <div className="relative h-16 w-16 bg-gray-700 rounded">
                                         <img
-                                            src={p.imageUrl} 
+                                            src={`/api/image-proxy?url=${encodeURIComponent(p.imageUrl)}`}
                                             alt={p.title}
                                             className="object-cover rounded w-full h-full"
                                         />

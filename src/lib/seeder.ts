@@ -155,6 +155,7 @@ export async function seedPaintings() {
           data: {
               id: p.id,
               source: p.source,
+              active: true,
               title: p.title,
               artist: p.artist,
               imageUrl: p.imageUrl,
