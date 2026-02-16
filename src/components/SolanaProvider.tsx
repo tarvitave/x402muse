@@ -28,7 +28,7 @@ const SolanaProvider: FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
+      <WalletProvider wallets={wallets}>
         <WalletModalProvider>
           <MuseWalletModal />
           {children}

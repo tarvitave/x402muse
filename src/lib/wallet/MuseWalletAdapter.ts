@@ -13,7 +13,7 @@ export class MuseWalletAdapter extends BaseMessageSignerWalletAdapter {
   name = MuseWalletName;
   url = 'https://muse-x402.app';
   icon = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIj48cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHJ4PSI2IiBmaWxsPSIjOEI1Q0Y2Ii8+PHRleHQgeD0iNTAlIiB5PSI1NSUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE4IiBmb250LWZhbWlseT0ic2VyaWYiPk08L3RleHQ+PC9zdmc+';
-  supportedTransactionVersions = null;
+  supportedTransactionVersions: ReadonlySet<number> | null = null;
 
   private _connecting = false;
   private _publicKey: PublicKey | null = null;
@@ -31,6 +31,12 @@ export class MuseWalletAdapter extends BaseMessageSignerWalletAdapter {
 
   get readyState(): WalletReadyState {
     return WalletReadyState.Installed;
+  }
+
+  // autoConnect is called on page reload — skip it since we require password
+  async autoConnect(): Promise<void> {
+    // Don't auto-connect; user must manually select and enter password
+    return;
   }
 
   async connect(): Promise<void> {
