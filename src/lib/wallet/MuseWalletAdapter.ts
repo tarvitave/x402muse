@@ -30,7 +30,7 @@ export class MuseWalletAdapter extends BaseMessageSignerWalletAdapter {
   }
 
   get readyState(): WalletReadyState {
-    return WalletReadyState.Loadable;
+    return WalletReadyState.Installed;
   }
 
   async connect(): Promise<void> {
