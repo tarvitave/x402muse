@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminEmail || !adminPassword) {
+    return NextResponse.json({ error: 'Admin credentials not configured' }, { status: 500 });
+  }
+
   const body = await request.json();
   const { email, password } = body;
 
-  if (email === 'colin@tarvit.com' && password === 'dundee88') {
+  if (email === adminEmail && password === adminPassword) {
     const response = NextResponse.json({ success: true });
     
     // Set cookie on the response object

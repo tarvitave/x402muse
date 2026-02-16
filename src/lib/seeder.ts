@@ -159,11 +159,51 @@ async function fetchMet(): Promise<Painting[]> {
   }
 }
 
+async function fetchRijks(): Promise<Painting[]> {
+  if (!RIJKS_API_KEY) {
+    console.log('Skipping Rijksmuseum: RIJKS_API_KEY not set');
+    return [];
+  }
+
+  try {
+    const response = await axios.get('https://www.rijksmuseum.nl/api/en/collection', {
+      params: {
+        key: RIJKS_API_KEY,
+        format: 'json',
+        type: 'painting',
+        toppieces: true,
+        ps: 60,
+        imgonly: true,
+      },
+    });
+
+    return response.data.artObjects
+      .filter((item: any) => item.webImage?.url && item.principalOrFirstMaker)
+      .map((item: any) => ({
+        id: `rijks-${item.objectNumber}`,
+        source: 'RIJKS' as const,
+        title: item.title,
+        artist: item.principalOrFirstMaker,
+        imageUrl: item.webImage.url,
+        date: item.longTitle || '',
+        medium: 'Painting',
+        hints: {
+          location: 'Rijksmuseum, Amsterdam',
+          bio: item.productionPlaces?.join(', ') || 'Netherlands',
+        },
+        blurLevel: 'blur(10px)',
+      }));
+  } catch (error) {
+    console.error('Rijksmuseum Fetch Error', error);
+    return [];
+  }
+}
+
 export async function seedPaintings() {
   ensureDirectories();
 
-  const [aic, met] = await Promise.all([fetchAIC(), fetchMet()]);
-  let all = [...aic, ...met];
+  const [aic, met, rijks] = await Promise.all([fetchAIC(), fetchMet(), fetchRijks()]);
+  let all = [...aic, ...met, ...rijks];
 
   // Basic cleaning
   all = all.filter(p => p.imageUrl && p.title && p.artist);

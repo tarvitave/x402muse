@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { paintings } from '@/data/paintings';
-import { Connection, PublicKey, Transaction } from '@solana/web3.js';
-
-const TREASURY_WALLET_ADDRESS = 'YourTreasuryWalletAddr'; // Replace with your actual treasury wallet address
+import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 export async function GET(
   req: NextRequest,
@@ -10,6 +8,11 @@ export async function GET(
 ) {
   const { id } = await params;
   const signature = req.headers.get('X-Payment-Signature');
+
+  const treasuryWallet = process.env.TREASURY_WALLET_ADDRESS;
+  if (!treasuryWallet) {
+    return NextResponse.json({ error: 'Treasury wallet not configured' }, { status: 500 });
+  }
 
   const allHints = paintings.flatMap((p) => p.hints);
   const hint = allHints.find((h) => h.id === id);
@@ -23,13 +26,30 @@ export async function GET(
       const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com');
       const tx = await connection.getTransaction(signature, { maxSupportedTransactionVersion: 0 });
 
-      if (tx && tx.meta && tx.meta.err === null) {
-        // Basic validation: check if the transaction was successful
-        // For a real app, you'd want to verify the transaction details (amount, recipient, etc.)
-        return NextResponse.json({ content: hint.content });
-      } else {
+      if (!tx || !tx.meta || tx.meta.err !== null) {
         throw new Error('Invalid or failed transaction');
       }
+
+      // Verify the recipient received the expected amount
+      const treasuryKey = new PublicKey(treasuryWallet);
+      const accountKeys = tx.transaction.message.getAccountKeys();
+      const treasuryIndex = accountKeys.staticAccountKeys.findIndex(
+        (key) => key.equals(treasuryKey)
+      );
+
+      if (treasuryIndex === -1) {
+        throw new Error('Treasury wallet not found in transaction');
+      }
+
+      const preBalance = tx.meta.preBalances[treasuryIndex];
+      const postBalance = tx.meta.postBalances[treasuryIndex];
+      const receivedSol = (postBalance - preBalance) / LAMPORTS_PER_SOL;
+
+      if (receivedSol < hint.costSol) {
+        throw new Error(`Insufficient payment: received ${receivedSol} SOL, expected ${hint.costSol} SOL`);
+      }
+
+      return NextResponse.json({ content: hint.content });
     } catch (error) {
       console.error('Transaction verification failed:', error);
       return NextResponse.json({ error: 'Payment verification failed' }, { status: 400 });
@@ -40,7 +60,7 @@ export async function GET(
       paymentRequest: {
         amount: hint.costSol,
         currency: 'SOL',
-        recipient: TREASURY_WALLET_ADDRESS,
+        recipient: treasuryWallet,
         resourceId: hint.id,
       },
     };
@@ -49,7 +69,7 @@ export async function GET(
       status: 402,
       headers: {
         'Content-Type': 'application/json',
-        'WWW-Authenticate': `x402 token="SOL", amount="${hint.costSol}", address="${TREASURY_WALLET_ADDRESS}"`,
+        'WWW-Authenticate': `x402 token="SOL", amount="${hint.costSol}", address="${treasuryWallet}"`,
       },
     });
   }

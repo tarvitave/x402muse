@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaLibSQL } from '@prisma/adapter-libsql';
-import { createClient } from '@libsql/client';
+import { PrismaLibSql } from '@prisma/adapter-libsql';
 import path from 'path';
 
 // Use absolute path for database to ensure it works in all contexts
@@ -11,11 +10,7 @@ const dbPath = process.env.DATABASE_URL ||
     : `file:${path.join(process.cwd(), 'dev.db')}`);
 console.log('Database path:', dbPath);
 
-const libsql = createClient({
-  url: dbPath,
-});
-
-const adapter = new PrismaLibSQL(libsql);
+const adapter = new PrismaLibSql({ url: dbPath });
 
 const prismaClientSingleton = () => {
   return new PrismaClient({ adapter });
