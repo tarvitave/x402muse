@@ -29,15 +29,11 @@ const SolanaProvider: FC<{ children: React.ReactNode }> = ({ children }) => {
     }
   }, [mounted, wallets]);
 
-  if (!mounted) {
-    return <>{children}</>;
-  }
-
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets}>
         <WalletModalProvider>
-          <MuseWalletModal />
+          {mounted && <MuseWalletModal />}
           {children}
         </WalletModalProvider>
       </WalletProvider>
