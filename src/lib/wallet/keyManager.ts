@@ -1,3 +1,8 @@
+import { Buffer } from 'buffer';
+if (typeof globalThis.Buffer === 'undefined') {
+  (globalThis as Record<string, unknown>).Buffer = Buffer;
+}
+
 import * as bip39 from 'bip39';
 import { derivePath } from 'ed25519-hd-key';
 import { Keypair } from '@solana/web3.js';
@@ -16,10 +21,15 @@ export function validateMnemonic(mnemonic: string): boolean {
   return bip39.validateMnemonic(mnemonic.trim().toLowerCase());
 }
 
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export function deriveKeypair(mnemonic: string): Keypair {
   const seed = bip39.mnemonicToSeedSync(mnemonic.trim().toLowerCase());
-  const derived = derivePath(SOLANA_DERIVATION_PATH, Buffer.from(seed).toString('hex'));
-  const keyPair = nacl.sign.keyPair.fromSeed(derived.key);
+  const seedBytes = new Uint8Array(seed);
+  const derived = derivePath(SOLANA_DERIVATION_PATH, toHex(seedBytes));
+  const keyPair = nacl.sign.keyPair.fromSeed(new Uint8Array(derived.key));
   return Keypair.fromSecretKey(keyPair.secretKey);
 }
 

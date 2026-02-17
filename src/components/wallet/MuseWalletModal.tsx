@@ -87,8 +87,9 @@ export default function MuseWalletModal() {
       setMnemonic(phrase);
       await createAndSaveWallet(phrase, password);
       setView('backup');
-    } catch {
-      setError('Failed to create wallet');
+    } catch (err) {
+      console.error('[MuseWallet] Failed to create wallet:', err);
+      setError('Failed to create wallet: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setLoading(false);
     }
