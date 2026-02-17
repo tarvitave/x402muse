@@ -19,7 +19,15 @@ import BalanceDisplay from './BalanceDisplay';
 import TransactionHistory from './TransactionHistory';
 
 export default function MuseWalletModal() {
-  const { wallet, publicKey, disconnect } = useWallet();
+  const { wallet, wallets, publicKey, disconnect } = useWallet();
+
+  // Debug: log all wallets visible to the modal
+  useEffect(() => {
+    console.log('[MuseWalletModal] all wallets from useWallet():', wallets.map(w => ({
+      name: w.adapter.name,
+      readyState: w.readyState,
+    })));
+  }, [wallets]);
   const { isModalOpen, modalView, mnemonic, openModal, closeModal, setView, setMnemonic } =
     useWalletUIStore();
 

@@ -22,6 +22,13 @@ const SolanaProvider: FC<{ children: React.ReactNode }> = ({ children }) => {
     setMounted(true);
   }, []);
 
+  // Debug: verify adapter is being created
+  useEffect(() => {
+    if (mounted) {
+      console.log('[SolanaProvider] adapters:', wallets.map(w => ({ name: w.name, readyState: w.readyState })));
+    }
+  }, [mounted, wallets]);
+
   if (!mounted) {
     return <>{children}</>;
   }
