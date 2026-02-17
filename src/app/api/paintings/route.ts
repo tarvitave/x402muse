@@ -15,7 +15,7 @@ export async function GET() {
     });
     
     // Add runtime fields that aren't in DB but needed by frontend
-    const enriched = data.map(p => ({
+    const enriched = data.map((p: typeof data[number]) => ({
         ...p,
         blurLevel: 'blur(10px)'
     }));
