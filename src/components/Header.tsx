@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { MuseWalletName } from '@/lib/wallet/MuseWalletAdapter';
@@ -14,6 +14,9 @@ const WalletMultiButton = dynamic(
 export default function Header() {
   const { wallet, connected, connecting, disconnect, select } = useWallet();
   const openModal = useWalletUIStore((s) => s.openModal);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const isMuseWallet = wallet?.adapter?.name === MuseWalletName;
 
@@ -43,29 +46,33 @@ export default function Header() {
     <header className="flex justify-between items-center p-4 bg-gray-900 text-white">
       <h1 className="text-2xl font-bold">Muse x402</h1>
       <div className="flex items-center gap-2">
-        {connecting && (
-          <button
-            onClick={handleCancelConnect}
-            className="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-2 px-3 rounded-lg"
-          >
-            Cancel
-          </button>
-        )}
-        {connected && isMuseWallet && (
-          <button
-            onClick={() => openModal('dashboard')}
-            className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2 px-3 rounded-lg"
-          >
-            Manage
-          </button>
-        )}
-        {!connected && !connecting && (
-          <button
-            onClick={handleMuseWalletClick}
-            className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2 px-3 rounded-lg"
-          >
-            Muse Wallet
-          </button>
+        {mounted && (
+          <>
+            {connecting && (
+              <button
+                onClick={handleCancelConnect}
+                className="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold py-2 px-3 rounded-lg"
+              >
+                Cancel
+              </button>
+            )}
+            {connected && isMuseWallet && (
+              <button
+                onClick={() => openModal('dashboard')}
+                className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2 px-3 rounded-lg"
+              >
+                Manage
+              </button>
+            )}
+            {!connected && !connecting && (
+              <button
+                onClick={handleMuseWalletClick}
+                className="bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2 px-3 rounded-lg"
+              >
+                Muse Wallet
+              </button>
+            )}
+          </>
         )}
         <WalletMultiButton />
       </div>
