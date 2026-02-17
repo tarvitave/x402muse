@@ -7,7 +7,7 @@ import { MuseWalletName } from '@/lib/wallet/MuseWalletAdapter';
 import { useWalletUIStore } from '@/lib/wallet/walletStore';
 
 export default function Header() {
-  const { wallets, wallet, connected, connecting, publicKey, disconnect, select } = useWallet();
+  const { wallets, wallet, connected, connecting, publicKey, disconnect, select, connect } = useWallet();
   const openModal = useWalletUIStore((s) => s.openModal);
   const [mounted, setMounted] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -39,9 +39,12 @@ export default function Header() {
     return () => clearTimeout(timeout);
   }, [connecting, disconnect]);
 
-  function handleSelect(walletName: string) {
+  async function handleSelect(walletName: string) {
     setDropdownOpen(false);
     select(walletName as Parameters<typeof select>[0]);
+    // select() only sets the wallet, need to explicitly connect
+    // Small delay to let the wallet adapter update state after select
+    setTimeout(() => { connect().catch(() => {}); }, 100);
   }
 
   function handleDisconnect() {
