@@ -1,10 +1,10 @@
 'use client';
 
+import { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { MuseWalletName } from '@/lib/wallet/MuseWalletAdapter';
 import { useWalletUIStore } from '@/lib/wallet/walletStore';
-import { hasExistingWallet } from '@/lib/wallet/keyManager';
 
 const WalletMultiButton = dynamic(
   () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletMultiButton),
@@ -17,15 +17,25 @@ export default function Header() {
 
   const isMuseWallet = wallet?.adapter?.name === MuseWalletName;
 
+  // Auto-cancel connecting after 30 seconds
+  useEffect(() => {
+    if (!connecting) return;
+    const timeout = setTimeout(() => {
+      console.log('[Header] Connection timed out after 30s, auto-cancelling');
+      localStorage.removeItem('walletName');
+      disconnect();
+      window.location.reload();
+    }, 30_000);
+    return () => clearTimeout(timeout);
+  }, [connecting, disconnect]);
+
   function handleCancelConnect() {
-    // Clear stale wallet selection and reset state
     localStorage.removeItem('walletName');
     disconnect();
     window.location.reload();
   }
 
   function handleMuseWalletClick() {
-    // Select the Muse Wallet adapter, which triggers connect() -> modal
     select(MuseWalletName);
   }
 
