@@ -44,22 +44,42 @@ jobs:
           fi
 
           cd ~/x402muse
-          
+
           # 2. Build Docker Image (with progress plain to see logs)
           docker build --progress=plain -t muse-app .
 
-          # Cleanup Old Container
+          # Cleanup Old App Container
           docker stop muse-app || true
           docker rm muse-app || true
 
           # Create persistent data directory on host
           mkdir -p ~/muse_data
 
-          # Run New Container with Persistent Volume for SQLite
+          # Create Docker network for Caddy <-> App communication
+          docker network create muse-net 2>/dev/null || true
+
+          # Run App Container (only exposed to Docker network, not host)
           docker run -d \
-            -p 80:3000 \
             --name muse-app \
             --restart always \
+            --network muse-net \
             -v ~/muse_data:/app/prisma/db \
             -e DATABASE_URL="file:/app/prisma/db/prod.db" \
             muse-app
+
+          # Setup Caddy for automatic HTTPS (if not already running)
+          if ! docker ps --format '{{.Names}}' | grep -q '^caddy$'; then
+            mkdir -p ~/caddy_data ~/caddy_config
+            docker run -d \
+              --name caddy \
+              --restart always \
+              --network muse-net \
+              -p 80:80 \
+              -p 443:443 \
+              -v ~/caddy_data:/data \
+              -v ~/caddy_config:/config \
+              caddy:2-alpine caddy reverse-proxy --from x402muse.com --to muse-app:3000
+          else
+            # Caddy already running, just make sure it can reach the new container
+            docker network connect muse-net caddy 2>/dev/null || true
+          fi
