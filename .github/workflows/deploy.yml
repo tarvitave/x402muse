@@ -52,8 +52,9 @@ jobs:
           docker stop muse-app || true
           docker rm muse-app || true
 
-          # Create persistent data directory on host
+          # Create persistent data directory on host (uid 1001 = nextjs user in container)
           mkdir -p ~/muse_data
+          chown 1001:1001 ~/muse_data
 
           # Create Docker network for Caddy <-> App communication
           docker network create muse-net 2>/dev/null || true
