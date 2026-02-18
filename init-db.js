@@ -23,7 +23,7 @@ async function init() {
         "paintingId" TEXT NOT NULL,
         "label" TEXT NOT NULL,
         "content" TEXT NOT NULL,
-        "costSol" REAL NOT NULL DEFAULT 0.01,
+        "costSol" REAL NOT NULL DEFAULT 0.00001,
         "isLocked" BOOLEAN NOT NULL DEFAULT true,
         CONSTRAINT "Hint_paintingId_fkey" FOREIGN KEY ("paintingId") REFERENCES "Painting" ("id") ON DELETE CASCADE ON UPDATE CASCADE
       )
@@ -64,6 +64,16 @@ async function init() {
         "weekStart" DATETIME NOT NULL,
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT "Payout_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "HintPayment" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "userId" TEXT NOT NULL,
+        "hintId" TEXT NOT NULL,
+        "amountSol" REAL NOT NULL,
+        "txSignature" TEXT NOT NULL,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
     console.log('Database tables initialized successfully');

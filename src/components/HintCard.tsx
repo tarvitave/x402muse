@@ -49,6 +49,7 @@ export default function HintCard({ hint, onUnlock }: HintCardProps) {
         const retryResponse = await fetch(`/api/hints/${hint.id}`, {
           headers: {
             'X-Payment-Signature': signature,
+            'X-User-Id': publicKey.toBase58(),
           },
         });
 

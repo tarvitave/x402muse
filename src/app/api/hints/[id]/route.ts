@@ -49,6 +49,21 @@ export async function GET(
         throw new Error(`Insufficient payment: received ${receivedSol} SOL, expected ${hint.costSol} SOL`);
       }
 
+      // Record the payment for weekly payout tracking
+      const userId = req.headers.get('X-User-Id');
+      try {
+        await prisma.hintPayment.create({
+          data: {
+            userId: userId || 'anonymous',
+            hintId: hint.id,
+            amountSol: receivedSol,
+            txSignature: signature,
+          },
+        });
+      } catch {
+        // Non-critical — don't block hint delivery if tracking fails
+      }
+
       return NextResponse.json({ content: hint.content });
     } catch (error) {
       console.error('Transaction verification failed:', error);

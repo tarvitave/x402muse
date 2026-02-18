@@ -45,9 +45,15 @@ export async function POST(req: NextRequest) {
   }
 
   const winnerId = rows[0].userId;
-  const payoutAmountSol = parseFloat(process.env.WEEKLY_PAYOUT_SOL ?? '0');
+
+  // Calculate payout from SOL collected via hint payments during the week
+  const payments = await prisma.hintPayment.aggregate({
+    where: { createdAt: { gte: weekStart, lt: weekEnd } },
+    _sum: { amountSol: true },
+  });
+  const payoutAmountSol = payments._sum.amountSol ?? 0;
   if (payoutAmountSol <= 0) {
-    return NextResponse.json({ message: 'No payout amount configured' }, { status: 400 });
+    return NextResponse.json({ message: 'No SOL collected this week, no payout' });
   }
 
   const treasurySecret = process.env.TREASURY_PRIVATE_KEY;

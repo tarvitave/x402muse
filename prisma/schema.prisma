@@ -29,7 +29,7 @@ model Hint {
   paintingId String
   label      String
   content    String
-  costSol    Float    @default(0.01)
+  costSol    Float    @default(0.00001)
   isLocked   Boolean  @default(true)
   painting   Painting @relation(fields: [paintingId], references: [id], onDelete: Cascade)
 }
@@ -52,6 +52,15 @@ model Score {
   hintsUsed  Int      @default(0)
   createdAt  DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id])
+}
+
+model HintPayment {
+  id          String   @id @default(uuid())
+  userId      String
+  hintId      String
+  amountSol   Float
+  txSignature String
+  createdAt   DateTime @default(now())
 }
 
 model Payout {

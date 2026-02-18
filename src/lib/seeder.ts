@@ -182,14 +182,14 @@ export async function seedPaintings() {
                 id: `${p.id}-1`,
                 label: 'Where is it displayed?',
                 content: p.hints.location,
-                costSol: 0.01,
+                costSol: 0.00001,
                 isLocked: true,
               },
               {
                 id: `${p.id}-2`,
                 label: 'Artist Context',
                 content: p.hints.bio,
-                costSol: 0.01,
+                costSol: 0.00001,
                 isLocked: true,
               },
             ]
