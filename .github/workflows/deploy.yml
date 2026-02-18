@@ -66,6 +66,11 @@ jobs:
             --network muse-net \
             -v ~/muse_data:/app/prisma/db \
             -e DATABASE_URL="file:/app/prisma/db/prod.db" \
+            -e ADMIN_EMAIL="${{ secrets.ADMIN_EMAIL }}" \
+            -e ADMIN_PASSWORD="${{ secrets.ADMIN_PASSWORD }}" \
+            -e TREASURY_WALLET_ADDRESS="${{ secrets.TREASURY_WALLET_ADDRESS }}" \
+            -e SOLANA_RPC_URL="${{ secrets.SOLANA_RPC_URL }}" \
+            -e RIJKS_API_KEY="${{ secrets.RIJKS_API_KEY }}" \
             muse-app
 
           # Setup Caddy for automatic HTTPS (if not already running)
