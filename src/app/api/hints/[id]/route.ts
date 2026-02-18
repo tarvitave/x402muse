@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { paintings } from '@/data/paintings';
+import prisma from '@/lib/prisma';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 export async function GET(
@@ -14,8 +14,7 @@ export async function GET(
     return NextResponse.json({ error: 'Treasury wallet not configured' }, { status: 500 });
   }
 
-  const allHints = paintings.flatMap((p) => p.hints);
-  const hint = allHints.find((h) => h.id === id);
+  const hint = await prisma.hint.findUnique({ where: { id } });
 
   if (!hint) {
     return NextResponse.json({ error: 'Hint not found' }, { status: 404 });
