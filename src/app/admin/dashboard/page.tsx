@@ -35,11 +35,13 @@ export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm>({ title: '', artist: '', hints: [] });
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'painting' | 'school'>('all');
 
   const loadData = async () => {
       try {
           setError('');
-          const res = await fetch('/api/admin/paintings/list?t=' + new Date().getTime());
+          const params = categoryFilter !== 'all' ? `&category=${categoryFilter}` : '';
+          const res = await fetch('/api/admin/paintings/list?t=' + new Date().getTime() + params);
           if (res.ok) {
               const data = await res.json();
               // Sort by Source, then by ID to keep consistent
@@ -61,7 +63,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
       loadData();
-  }, []);
+  }, [categoryFilter]);
 
   const toggleActive = async (id: string, currentStatus: boolean) => {
       try {
@@ -233,7 +235,7 @@ export default function AdminDashboard() {
         )}
 
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-xl font-semibold mb-6 flex justify-between items-center">
+            <h2 className="text-xl font-semibold mb-4 flex justify-between items-center">
                 <span>Current Database</span>
                 <div className="flex items-center gap-4">
                     <button
@@ -247,6 +249,21 @@ export default function AdminDashboard() {
                     </span>
                 </div>
             </h2>
+            <div className="flex gap-2 mb-6">
+                {(['all', 'painting', 'school'] as const).map((cat) => (
+                    <button
+                        key={cat}
+                        onClick={() => { setCategoryFilter(cat); setCurrentPage(1); }}
+                        className={`px-4 py-2 rounded text-sm font-semibold transition-colors ${
+                            categoryFilter === cat
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                        }`}
+                    >
+                        {cat === 'all' ? 'All' : cat === 'painting' ? 'Paintings' : 'Schools'}
+                    </button>
+                ))}
+            </div>
             
             <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">

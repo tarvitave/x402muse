@@ -1,12 +1,15 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    console.log('Fetching paintings from database...');
+    const category = req.nextUrl.searchParams.get('category');
+    const where = category ? { category } : {};
+
     const paintings = await prisma.painting.findMany({
+      where,
       include: {
         hints: true,
       },
@@ -14,7 +17,6 @@ export async function GET() {
         source: 'asc',
       },
     });
-    console.log('Found paintings:', paintings.length);
     return NextResponse.json(paintings);
   } catch (error) {
     console.error('Failed to fetch paintings:', error);
