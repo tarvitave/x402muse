@@ -28,6 +28,13 @@ async function init() {
         CONSTRAINT "Hint_paintingId_fkey" FOREIGN KEY ("paintingId") REFERENCES "Painting" ("id") ON DELETE CASCADE ON UPDATE CASCADE
       )
     `);
+    // Migrate: add category column if missing (for existing DBs)
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Painting" ADD COLUMN "category" TEXT NOT NULL DEFAULT 'painting'`);
+      console.log('Added category column to Painting table');
+    } catch (e) {
+      // Column already exists — ignore
+    }
     console.log('Database tables initialized successfully');
   } catch (e) {
     console.error('DB init error:', e.message);
