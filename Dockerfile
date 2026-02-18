@@ -1,9 +1,9 @@
 # Based on https://github.com/vercel/next.js/blob/canary/examples/with-docker/Dockerfile
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat python3 make g++ linux-headers eudev-dev
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
@@ -36,6 +36,9 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
+
+# Install OpenSSL for Prisma query engine
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # Don't run as root
 RUN addgroup --system --gid 1001 nodejs
