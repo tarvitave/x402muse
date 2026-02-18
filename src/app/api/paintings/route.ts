@@ -7,17 +7,18 @@ export async function GET() {
   try {
     const data = await prisma.painting.findMany({
       where: {
-        active: true
+        active: true,
+        category: 'painting',
       },
       include: {
         hints: true
       }
     });
-    
-    // Add runtime fields that aren't in DB but needed by frontend
+
     const enriched = data.map((p: typeof data[number]) => ({
         ...p,
-        blurLevel: 'blur(10px)'
+        blurLevel: 'blur(20px)',
+        answer: p.artist,
     }));
 
     return NextResponse.json(enriched);

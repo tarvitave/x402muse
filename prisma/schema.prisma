@@ -14,6 +14,7 @@ datasource db {
 model Painting {
   id            String   @id
   source        String?
+  category      String   @default("painting")
   title         String
   artist        String
   imageUrl      String

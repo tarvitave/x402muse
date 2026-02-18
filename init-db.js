@@ -8,6 +8,7 @@ async function init() {
       CREATE TABLE IF NOT EXISTS "Painting" (
         "id" TEXT NOT NULL PRIMARY KEY,
         "source" TEXT,
+        "category" TEXT NOT NULL DEFAULT 'painting',
         "title" TEXT NOT NULL,
         "artist" TEXT NOT NULL,
         "imageUrl" TEXT NOT NULL,

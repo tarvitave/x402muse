@@ -155,9 +155,9 @@ export async function seedPaintings() {
   // DB WRITE
   console.log('Seeding database...');
 
-  // Clear existing
-  await prisma.hint.deleteMany({});
-  await prisma.painting.deleteMany({});
+  // Clear existing paintings (not schools)
+  await prisma.hint.deleteMany({ where: { painting: { category: 'painting' } } });
+  await prisma.painting.deleteMany({ where: { category: 'painting' } });
 
   let successCount = 0;
   const breakdown: Record<string, number> = {};
@@ -170,6 +170,7 @@ export async function seedPaintings() {
         data: {
           id: p.id,
           source: p.source,
+          category: 'painting',
           active: true,
           title: p.title,
           artist: p.artist,
@@ -205,4 +206,49 @@ export async function seedPaintings() {
   }
 
   return { count: successCount, breakdown };
+}
+
+export async function seedSchools() {
+  const { schools } = await import('@/data/schools');
+
+  console.log('Seeding schools...');
+
+  // Clear existing schools (not paintings)
+  await prisma.hint.deleteMany({ where: { painting: { category: 'school' } } });
+  await prisma.painting.deleteMany({ where: { category: 'school' } });
+
+  let successCount = 0;
+
+  for (const s of schools) {
+    console.log(`Processing: ${s.id}`);
+
+    try {
+      await prisma.painting.create({
+        data: {
+          id: s.id,
+          source: 'STATIC',
+          category: 'school',
+          active: true,
+          title: s.title,
+          artist: s.artist,
+          imageUrl: s.imageUrl,
+          thumbnailPath: null,
+          hints: {
+            create: s.hints.map((h) => ({
+              id: h.id,
+              label: h.label,
+              content: h.content,
+              costSol: h.costSol,
+              isLocked: h.isLocked,
+            })),
+          },
+        },
+      });
+      successCount++;
+    } catch (error) {
+      console.error(`Failed to save ${s.id}:`, error);
+    }
+  }
+
+  return { count: successCount };
 }

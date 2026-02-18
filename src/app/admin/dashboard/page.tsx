@@ -140,20 +140,21 @@ export default function AdminDashboard() {
       }
   };
 
-  const runSeeder = async () => {
+  const runSeeder = async (type: 'paintings' | 'schools') => {
     setLoading(true);
-    setMessage('Seeding... this might take 60-90 seconds.');
+    const endpoint = type === 'paintings' ? '/api/admin/seed' : '/api/admin/seed-schools';
+    setMessage(`Seeding ${type}... this might take a moment.`);
     try {
-      const res = await fetch('/api/admin/seed', { method: 'POST' });
+      const res = await fetch(endpoint, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        let msg = `Success! Seeded ${data.count} paintings.`;
+        let msg = `Success! Seeded ${data.count} ${type}.`;
         if (data.breakdown) {
             const details = Object.entries(data.breakdown).map(([k, v]) => `${k}: ${v}`).join(', ');
             msg += ` [${details}]`;
         }
         setMessage(msg);
-        loadData(); // Refresh list
+        loadData();
       } else {
         setMessage(`Error: ${data.error}`);
       }
@@ -184,21 +185,38 @@ export default function AdminDashboard() {
         
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
           <h2 className="text-xl font-semibold mb-4">Content Management</h2>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-gray-300">Reseed Paintings Database</p>
               <p className="text-sm text-gray-500 mt-1">Fetches fresh data (~100 items) from Met/AIC APIs.</p>
             </div>
             <button
-              onClick={runSeeder}
+              onClick={() => runSeeder('paintings')}
               disabled={loading}
               className={`px-6 py-2 rounded font-bold ${
-                loading 
-                  ? 'bg-gray-600 cursor-not-allowed' 
+                loading
+                  ? 'bg-gray-600 cursor-not-allowed'
                   : 'bg-green-600 hover:bg-green-700'
               }`}
             >
-              {loading ? 'Running...' : 'Run Seed Script'}
+              {loading ? 'Running...' : 'Seed Paintings'}
+            </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-300">Seed Schools Database</p>
+              <p className="text-sm text-gray-500 mt-1">Loads 50 top US universities for the school game mode.</p>
+            </div>
+            <button
+              onClick={() => runSeeder('schools')}
+              disabled={loading}
+              className={`px-6 py-2 rounded font-bold ${
+                loading
+                  ? 'bg-gray-600 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {loading ? 'Running...' : 'Seed Schools'}
             </button>
           </div>
           {message && (
