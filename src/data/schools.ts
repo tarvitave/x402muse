@@ -83,7 +83,7 @@ export const schools: Painting[] = [
   },
   {
     id: 'school-caltech',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/Seal_of_the_California_Institute_of_Technology.svg/600px-Seal_of_the_California_Institute_of_Technology.svg.png',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Caltech_Logo.png/600px-Caltech_Logo.png',
     blurLevel: 'blur(20px)',
     artist: 'Caltech',
     title: 'California Institute of Technology',
@@ -147,7 +147,7 @@ export const schools: Painting[] = [
   },
   {
     id: 'school-jhu',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/0/0e/Johns_Hopkins_University_seal.svg/600px-Johns_Hopkins_University_seal.svg.png',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Johns_Hopkins_University_Logo.svg/600px-Johns_Hopkins_University_Logo.svg.png',
     blurLevel: 'blur(20px)',
     artist: 'Johns Hopkins',
     title: 'Johns Hopkins University',
@@ -195,7 +195,7 @@ export const schools: Painting[] = [
   },
   {
     id: 'school-brown',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/3/31/Brown_University_coat_of_arms.svg/600px-Brown_University_coat_of_arms.svg.png',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Brown_University_Logo.svg/600px-Brown_University_Logo.svg.png',
     blurLevel: 'blur(20px)',
     artist: 'Brown',
     title: 'Brown University',
@@ -291,7 +291,7 @@ export const schools: Painting[] = [
   },
   {
     id: 'school-cmu',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/b/bb/Carnegie_Mellon_University_seal.svg/600px-Carnegie_Mellon_University_seal.svg.png',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Carnegie_Mellon_wordmark.svg/600px-Carnegie_Mellon_wordmark.svg.png',
     blurLevel: 'blur(20px)',
     artist: 'Carnegie Mellon',
     title: 'Carnegie Mellon University',
@@ -355,7 +355,7 @@ export const schools: Painting[] = [
   },
   {
     id: 'school-uva',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/0/0e/Seal_of_the_University_of_Virginia.svg/600px-Seal_of_the_University_of_Virginia.svg.png',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/University_of_Virginia_Rotunda_logo.svg/600px-University_of_Virginia_Rotunda_logo.svg.png',
     blurLevel: 'blur(20px)',
     artist: 'UVA',
     title: 'University of Virginia',
@@ -451,7 +451,7 @@ export const schools: Painting[] = [
   },
   {
     id: 'school-pennstate',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/3/3a/Penn_State_Nittany_Lions_logo.svg/600px-Penn_State_Nittany_Lions_logo.svg.png',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Penn_State_Nittany_Lions_logo.svg/600px-Penn_State_Nittany_Lions_logo.svg.png',
     blurLevel: 'blur(20px)',
     artist: 'Penn State',
     title: 'Pennsylvania State University',
@@ -467,7 +467,7 @@ export const schools: Painting[] = [
   },
   {
     id: 'school-uf',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/1/14/Florida_Gators_gator_logo.svg/600px-Florida_Gators_gator_logo.svg.png',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Florida_Gators_logo.svg/600px-Florida_Gators_logo.svg.png',
     blurLevel: 'blur(20px)',
     artist: 'Florida',
     title: 'University of Florida',
@@ -483,7 +483,7 @@ export const schools: Painting[] = [
   },
   {
     id: 'school-nyu',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/1/16/New_York_University_Seal.svg/600px-New_York_University_Seal.svg.png',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/New_York_University_Logo.svg/600px-New_York_University_Logo.svg.png',
     blurLevel: 'blur(20px)',
     artist: 'NYU',
     title: 'New York University',
@@ -547,7 +547,7 @@ export const schools: Painting[] = [
   },
   {
     id: 'school-tufts',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/c/c0/Tufts_University_wordmark.svg/600px-Tufts_University_wordmark.svg.png',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Tufts_University_seal.svg/600px-Tufts_University_seal.svg.png',
     blurLevel: 'blur(20px)',
     artist: 'Tufts',
     title: 'Tufts University',

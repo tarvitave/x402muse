@@ -181,6 +181,13 @@ export function GameContent({ mode, onScoreSubmitted }: { mode: GameMode; onScor
             style={{
                 filter: isCorrect ? 'none' : `blur(${blurLevel}px)`
             }}
+            onError={(e) => {
+              const img = e.currentTarget;
+              if (!img.dataset.fallback) {
+                img.dataset.fallback = '1';
+                img.src = `https://placehold.co/600x400/1f2937/6b7280?text=${encodeURIComponent('?')}`;
+              }
+            }}
           />
         </div>
         {!isCorrect && (

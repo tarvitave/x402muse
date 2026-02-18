@@ -14,10 +14,12 @@ function getWeekStart(): Date {
 export async function GET(req: NextRequest) {
   const weekStart = getWeekStart();
   const mode = req.nextUrl.searchParams.get('mode');
+  const period = req.nextUrl.searchParams.get('period'); // 'alltime' or default (weekly)
 
-  const whereClause: Record<string, unknown> = {
-    createdAt: { gte: weekStart },
-  };
+  const whereClause: Record<string, unknown> = {};
+  if (period !== 'alltime') {
+    whereClause.createdAt = { gte: weekStart };
+  }
   if (mode) whereClause.mode = mode;
 
   const rows = await prisma.score.groupBy({
