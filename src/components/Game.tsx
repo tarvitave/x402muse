@@ -6,6 +6,44 @@ import { paintings as initialPaintings } from '@/data/paintings';
 import { Painting, GameMode } from '@/lib/types';
 import HintCard from './HintCard';
 
+const STOP_WORDS = new Set([
+  'the', 'of', 'at', 'in', 'and', 'a', 'an', 'for', 'to', 'by',
+  'university', 'college', 'institute', 'school',
+]);
+
+function normalize(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+}
+
+function getSignificantWords(s: string): string[] {
+  return normalize(s).split(/\s+/).filter(w => w.length > 1 && !STOP_WORDS.has(w));
+}
+
+function isCloseMatch(guess: string, answer: string): boolean {
+  const g = normalize(guess);
+  const a = normalize(answer);
+
+  // Exact match
+  if (g === a) return true;
+
+  // Substring: guess contained in answer or answer contained in guess
+  if (g.length >= 3 && (a.includes(g) || g.includes(a))) return true;
+
+  // Word overlap: if most significant guess words appear in the answer
+  const guessWords = getSignificantWords(guess);
+  const answerWords = getSignificantWords(answer);
+  if (guessWords.length > 0) {
+    const matches = guessWords.filter(w =>
+      answerWords.some(aw => aw.includes(w) || w.includes(aw))
+    );
+    const ratio = matches.length / guessWords.length;
+    // Accept if >=80% of guess words match and at least 1 significant word matched
+    if (ratio >= 0.8 && matches.length >= 1) return true;
+  }
+
+  return false;
+}
+
 const MODE_CONFIG = {
   painting: {
     endpoint: '/api/paintings',
@@ -98,7 +136,7 @@ export function GameContent({ mode, onScoreSubmitted }: { mode: GameMode; onScor
 
   const handleGuess = (e: React.FormEvent) => {
     e.preventDefault();
-    if (guess.toLowerCase().trim() === currentItem.answer.toLowerCase().trim()) {
+    if (isCloseMatch(guess, currentItem.answer)) {
       setIsCorrect(true);
       submitScore(currentItem.id, hintsUsedCount);
     } else {
