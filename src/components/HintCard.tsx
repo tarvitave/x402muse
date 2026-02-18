@@ -88,7 +88,7 @@ export default function HintCard({ hint, onUnlock }: HintCardProps) {
       </div>
       <div className="mt-2">
         {isUnlocked ? (
-          <p className="text-white">{unlockedContent || hint.content}</p>
+          <p className="text-gray-800">{unlockedContent || hint.content}</p>
         ) : (
           <p className="text-gray-400">********</p>
         )}
