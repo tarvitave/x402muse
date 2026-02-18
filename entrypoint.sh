@@ -1,6 +1,6 @@
 #!/bin/sh
-# Initialize the database schema if it doesn't exist
-echo "Running prisma db push..."
-node ./node_modules/prisma/build/index.js db push --skip-generate --accept-data-loss 2>&1
+# Initialize the database tables if they don't exist
+echo "Initializing database..."
+node init-db.js
 echo "Starting server..."
 exec node server.js
