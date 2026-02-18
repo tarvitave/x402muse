@@ -5,6 +5,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { MuseWalletName } from '@/lib/wallet/MuseWalletAdapter';
 import { useWalletUIStore } from '@/lib/wallet/walletStore';
+import UserProfileModal from './UserProfileModal';
 
 export default function Header() {
   const { wallets, wallet, connected, connecting, publicKey, disconnect, select, connect } = useWallet();
@@ -12,11 +13,31 @@ export default function Header() {
   const [mounted, setMounted] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [pendingConnect, setPendingConnect] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setMounted(true), []);
 
   const isMuseWallet = wallet?.adapter?.name === MuseWalletName;
+
+  // Check user profile when wallet connects
+  useEffect(() => {
+    if (!connected || !publicKey) {
+      setUserName(null);
+      return;
+    }
+    const address = publicKey.toBase58();
+    fetch(`/api/users/${address}`)
+      .then(res => {
+        if (res.status === 404) {
+          setShowProfileModal(true);
+        } else if (res.ok) {
+          return res.json().then((u: { name: string }) => setUserName(u.name));
+        }
+      })
+      .catch(() => {});
+  }, [connected, publicKey]);
 
   // Auto-connect once wallet is selected and ready
   useEffect(() => {
@@ -56,11 +77,11 @@ export default function Header() {
 
   function handleDisconnect() {
     setDropdownOpen(false);
+    setUserName(null);
     localStorage.removeItem('walletName');
     disconnect();
   }
 
-  // Get available wallets (installed or our custom Muse Wallet)
   const availableWallets = wallets.filter(
     (w) =>
       w.readyState === WalletReadyState.Installed ||
@@ -72,15 +93,22 @@ export default function Header() {
     ? `${publicKey.toBase58().slice(0, 4)}...${publicKey.toBase58().slice(-4)}`
     : '';
 
+  const headerTitle = (
+    <div>
+      <h1 className="text-xl font-bold leading-tight">Muse x402</h1>
+      <p className="text-xs text-gray-400">Demo of x402 protocol using gamification</p>
+    </div>
+  );
+
   if (!mounted) return (
     <header className="flex justify-between items-center p-4 bg-gray-900 text-white">
-      <h1 className="text-2xl font-bold">Muse x402</h1>
+      {headerTitle}
     </header>
   );
 
   return (
     <header className="flex justify-between items-center p-4 bg-gray-900 text-white">
-      <h1 className="text-2xl font-bold">Muse x402</h1>
+      {headerTitle}
       <div className="flex items-center gap-2">
         {connecting && (
           <button
@@ -110,7 +138,7 @@ export default function Header() {
                 {wallet?.adapter?.icon && (
                   <img src={wallet.adapter.icon} alt="" className="w-5 h-5 rounded" />
                 )}
-                {shortAddress}
+                {userName ?? shortAddress}
               </>
             ) : connecting ? (
               'Connecting...'
@@ -129,7 +157,14 @@ export default function Header() {
                   <div className="px-4 py-3 border-b border-gray-700">
                     <p className="text-xs text-gray-400">Connected with {wallet?.adapter?.name}</p>
                     <p className="text-sm font-mono text-purple-400">{shortAddress}</p>
+                    {userName && <p className="text-sm text-white mt-1">{userName}</p>}
                   </div>
+                  <button
+                    onClick={() => { setDropdownOpen(false); setShowProfileModal(true); }}
+                    className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-gray-700"
+                  >
+                    Edit Profile
+                  </button>
                   <button
                     onClick={handleDisconnect}
                     className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-gray-700"
@@ -161,6 +196,14 @@ export default function Header() {
           )}
         </div>
       </div>
+
+      {showProfileModal && publicKey && (
+        <UserProfileModal
+          walletAddress={publicKey.toBase58()}
+          onSave={(name) => { setUserName(name); setShowProfileModal(false); }}
+          onClose={() => setShowProfileModal(false)}
+        />
+      )}
     </header>
   );
 }

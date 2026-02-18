@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { paintings as initialPaintings } from '@/data/paintings';
 import { Painting, GameMode } from '@/lib/types';
 import HintCard from './HintCard';
@@ -22,7 +23,8 @@ const MODE_CONFIG = {
   },
 };
 
-export function GameContent({ mode }: { mode: GameMode }) {
+export function GameContent({ mode, onScoreSubmitted }: { mode: GameMode; onScoreSubmitted?: () => void }) {
+  const { publicKey } = useWallet();
   const [allItems, setAllItems] = useState<Painting[]>([]);
   const [currentItem, setCurrentItem] = useState<Painting | null>(null);
   const [guess, setGuess] = useState('');
@@ -31,6 +33,7 @@ export function GameContent({ mode }: { mode: GameMode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [guessesLeft, setGuessesLeft] = useState(5);
   const [blurLevel, setBlurLevel] = useState(20);
+  const [hintsUsedCount, setHintsUsedCount] = useState(0);
 
   const config = MODE_CONFIG[mode];
 
@@ -43,6 +46,7 @@ export function GameContent({ mode }: { mode: GameMode }) {
     setUnlockedHints({});
     setGuessesLeft(5);
     setBlurLevel(20);
+    setHintsUsedCount(0);
 
     fetch(config.endpoint + '?t=' + new Date().getTime())
       .then((res) => {
@@ -76,10 +80,27 @@ export function GameContent({ mode }: { mode: GameMode }) {
     );
   }
 
+  const submitScore = (paintingId: string, hintsUsed: number) => {
+    if (!publicKey) return;
+    fetch('/api/scores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: publicKey.toBase58(),
+        paintingId,
+        mode,
+        hintsUsed,
+      }),
+    })
+      .then(() => onScoreSubmitted?.())
+      .catch(() => {});
+  };
+
   const handleGuess = (e: React.FormEvent) => {
     e.preventDefault();
     if (guess.toLowerCase().trim() === currentItem.answer.toLowerCase().trim()) {
       setIsCorrect(true);
+      submitScore(currentItem.id, hintsUsedCount);
     } else {
       setIsCorrect(false);
       setGuessesLeft((prev) => Math.max(0, prev - 1));
@@ -93,6 +114,7 @@ export function GameContent({ mode }: { mode: GameMode }) {
 
   const handleHintUnlock = (id: string, content: string) => {
     setUnlockedHints((prev) => ({ ...prev, [id]: content }));
+    setHintsUsedCount((prev) => prev + 1);
   };
 
   const handleNext = () => {
@@ -107,6 +129,7 @@ export function GameContent({ mode }: { mode: GameMode }) {
     setUnlockedHints({});
     setGuessesLeft(5);
     setBlurLevel(20);
+    setHintsUsedCount(0);
   };
 
   return (

@@ -71,6 +71,9 @@ jobs:
             -e TREASURY_WALLET_ADDRESS="${{ secrets.TREASURY_WALLET_ADDRESS }}" \
             -e SOLANA_RPC_URL="${{ secrets.SOLANA_RPC_URL }}" \
             -e RIJKS_API_KEY="${{ secrets.RIJKS_API_KEY }}" \
+            -e TREASURY_PRIVATE_KEY="${{ secrets.TREASURY_PRIVATE_KEY }}" \
+            -e WEEKLY_PAYOUT_SOL="${{ secrets.WEEKLY_PAYOUT_SOL }}" \
+            -e CRON_SECRET="${{ secrets.CRON_SECRET }}" \
             muse-app
 
           # Setup Caddy for automatic HTTPS (if not already running)

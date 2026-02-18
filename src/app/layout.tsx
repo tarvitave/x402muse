@@ -7,8 +7,8 @@ import Header from "@/components/Header";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Muse x402",
-  description: "A 'Guess the Painting' trivia game demonstrating the x402 Payment Protocol.",
+  title: "Muse x402 - Demo of x402 protocol using gamification",
+  description: "Guess the painting or school in this trivia game demonstrating the x402 Payment Protocol with Solana micropayments.",
 };
 
 export default function RootLayout({

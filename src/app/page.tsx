@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import ModeSelector from '@/components/ModeSelector';
+import Leaderboard from '@/components/Leaderboard';
 import { GameMode } from '@/lib/types';
 
 const Game = dynamic(
@@ -19,11 +20,23 @@ const Game = dynamic(
 
 export default function Home() {
   const [mode, setMode] = useState<GameMode>('painting');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleScoreSubmitted = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+  }, []);
 
   return (
     <main className="min-h-screen">
       <ModeSelector mode={mode} onChange={setMode} />
-      <Game mode={mode} />
+      <div className="flex flex-col xl:flex-row gap-6 px-4 pb-8">
+        <div className="flex-1 min-w-0">
+          <Game mode={mode} onScoreSubmitted={handleScoreSubmitted} />
+        </div>
+        <div className="w-full xl:w-72 shrink-0">
+          <Leaderboard mode={mode} refreshKey={refreshKey} />
+        </div>
+      </div>
     </main>
   );
 }

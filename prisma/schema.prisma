@@ -33,3 +33,33 @@ model Hint {
   isLocked   Boolean  @default(true)
   painting   Painting @relation(fields: [paintingId], references: [id], onDelete: Cascade)
 }
+
+model User {
+  id        String   @id
+  name      String
+  email     String?
+  createdAt DateTime @default(now())
+  scores    Score[]
+  payouts   Payout[]
+}
+
+model Score {
+  id         String   @id @default(uuid())
+  userId     String
+  paintingId String
+  mode       String
+  points     Int
+  hintsUsed  Int      @default(0)
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model Payout {
+  id          String   @id @default(uuid())
+  userId      String
+  amountSol   Float
+  txSignature String?
+  weekStart   DateTime
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+}
