@@ -10,9 +10,6 @@ export async function GET(
   const signature = req.headers.get('X-Payment-Signature');
 
   const treasuryWallet = process.env.TREASURY_WALLET_ADDRESS;
-  if (!treasuryWallet) {
-    return NextResponse.json({ error: 'Treasury wallet not configured' }, { status: 500 });
-  }
 
   const hint = await prisma.hint.findUnique({ where: { id } });
 
@@ -21,6 +18,10 @@ export async function GET(
   }
 
   if (signature) {
+    if (!treasuryWallet) {
+      return NextResponse.json({ error: 'Treasury wallet not configured' }, { status: 500 });
+    }
+
     try {
       const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com');
       const tx = await connection.getTransaction(signature, { maxSupportedTransactionVersion: 0 });
@@ -53,7 +54,11 @@ export async function GET(
       console.error('Transaction verification failed:', error);
       return NextResponse.json({ error: 'Payment verification failed' }, { status: 400 });
     }
+  } else if (!treasuryWallet) {
+    // No treasury configured — free access (demo mode)
+    return NextResponse.json({ content: hint.content });
   } else {
+    // No payment signature — return 402 with payment info
     const responseBody = {
       error: 'Payment Required',
       paymentRequest: {
