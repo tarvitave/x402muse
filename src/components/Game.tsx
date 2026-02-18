@@ -192,13 +192,21 @@ export function GameContent({ mode, onScoreSubmitted }: { mode: GameMode; onScor
         </div>
         {!isCorrect && (
           <div className="mt-3 flex items-center justify-between">
-            <button
-              onClick={handleReduceBlur}
-              disabled={blurLevel <= 0 || guessesLeft <= 0}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-500 disabled:cursor-not-allowed"
-            >
-              Less Blur
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleReduceBlur}
+                disabled={blurLevel <= 0 || guessesLeft <= 0}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-500 disabled:cursor-not-allowed"
+              >
+                Less Blur
+              </button>
+              <button
+                onClick={handleNext}
+                className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Skip
+              </button>
+            </div>
             <span className="text-gray-400 text-sm">
               {guessesLeft} free {guessesLeft === 1 ? 'guess' : 'guesses'} left
             </span>
