@@ -23,6 +23,7 @@ const MODE_CONFIG = {
 };
 
 export function GameContent({ mode }: { mode: GameMode }) {
+  const [allItems, setAllItems] = useState<Painting[]>([]);
   const [currentItem, setCurrentItem] = useState<Painting | null>(null);
   const [guess, setGuess] = useState('');
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -50,15 +51,17 @@ export function GameContent({ mode }: { mode: GameMode }) {
       })
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          // Pick a random item
+          setAllItems(data);
           const randomIndex = Math.floor(Math.random() * data.length);
           setCurrentItem(data[randomIndex]);
         } else if (mode === 'painting') {
+          setAllItems(initialPaintings);
           setCurrentItem(initialPaintings[0]);
         }
       })
       .catch(() => {
         if (mode === 'painting') {
+          setAllItems(initialPaintings);
           setCurrentItem(initialPaintings[0]);
         }
       })
@@ -92,6 +95,20 @@ export function GameContent({ mode }: { mode: GameMode }) {
     setUnlockedHints((prev) => ({ ...prev, [id]: content }));
   };
 
+  const handleNext = () => {
+    if (allItems.length <= 1) return;
+    let next: Painting;
+    do {
+      next = allItems[Math.floor(Math.random() * allItems.length)];
+    } while (next.id === currentItem?.id && allItems.length > 1);
+    setCurrentItem(next);
+    setGuess('');
+    setIsCorrect(null);
+    setUnlockedHints({});
+    setGuessesLeft(5);
+    setBlurLevel(20);
+  };
+
   return (
     <div className="flex flex-col md:flex-row gap-8 p-8">
       <div className="flex-1">
@@ -123,6 +140,12 @@ export function GameContent({ mode }: { mode: GameMode }) {
           <div className="mt-4 text-center">
             <h2 className="text-3xl font-bold text-green-400">Correct!</h2>
             <p className="text-xl">{config.successLabel(currentItem)}</p>
+            <button
+              onClick={handleNext}
+              className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded"
+            >
+              Next
+            </button>
           </div>
         )}
         <form onSubmit={handleGuess} className="mt-4">
@@ -144,7 +167,15 @@ export function GameContent({ mode }: { mode: GameMode }) {
         </form>
         {isCorrect === false && guessesLeft > 0 && <p className="mt-2 text-red-500">Incorrect guess. Try again!</p>}
         {guessesLeft <= 0 && !isCorrect && (
-          <p className="mt-2 text-red-500">No guesses left! The answer is: <span className="font-bold text-yellow-400">{config.revealLabel(currentItem)}</span></p>
+          <div className="mt-2">
+            <p className="text-red-500">No guesses left! The answer is: <span className="font-bold text-yellow-400">{config.revealLabel(currentItem)}</span></p>
+            <button
+              onClick={handleNext}
+              className="mt-3 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded"
+            >
+              Next
+            </button>
+          </div>
         )}
       </div>
       <div className="w-full md:w-1/3">
