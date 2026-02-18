@@ -11,11 +11,20 @@ export default function Header() {
   const openModal = useWalletUIStore((s) => s.openModal);
   const [mounted, setMounted] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [pendingConnect, setPendingConnect] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setMounted(true), []);
 
   const isMuseWallet = wallet?.adapter?.name === MuseWalletName;
+
+  // Auto-connect once wallet is selected and ready
+  useEffect(() => {
+    if (pendingConnect && wallet && !connected && !connecting) {
+      setPendingConnect(false);
+      connect().catch(() => {});
+    }
+  }, [pendingConnect, wallet, connected, connecting, connect]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -39,12 +48,10 @@ export default function Header() {
     return () => clearTimeout(timeout);
   }, [connecting, disconnect]);
 
-  async function handleSelect(walletName: string) {
+  function handleSelect(walletName: string) {
     setDropdownOpen(false);
     select(walletName as Parameters<typeof select>[0]);
-    // select() only sets the wallet, need to explicitly connect
-    // Small delay to let the wallet adapter update state after select
-    setTimeout(() => { connect().catch(() => {}); }, 100);
+    setPendingConnect(true);
   }
 
   function handleDisconnect() {
