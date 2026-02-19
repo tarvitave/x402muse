@@ -13,6 +13,7 @@ interface LeaderboardEntry {
 interface LeaderboardData {
   weekStart: string;
   leaderboard: LeaderboardEntry[];
+  prizePoolSol?: number;
 }
 
 function LeaderboardTable({ entries, loading, emptyText }: {
@@ -76,9 +77,16 @@ export default function Leaderboard({ mode, refreshKey }: { mode?: string; refre
       <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
         <h3 className="text-lg font-bold text-white mb-1">Weekly Leaderboard</h3>
         {weeklyData && (
-          <p className="text-xs text-gray-400 mb-3">
-            Week of {new Date(weeklyData.weekStart).toLocaleDateString()}
-          </p>
+          <div className="mb-3">
+            <p className="text-xs text-gray-400">
+              Week of {new Date(weeklyData.weekStart).toLocaleDateString()}
+            </p>
+            {weeklyData.prizePoolSol !== undefined && weeklyData.prizePoolSol > 0 && (
+              <p className="text-sm text-yellow-400 font-semibold mt-1">
+                Prize: {weeklyData.prizePoolSol} SOL
+              </p>
+            )}
+          </div>
         )}
         <LeaderboardTable
           entries={weeklyData?.leaderboard ?? []}

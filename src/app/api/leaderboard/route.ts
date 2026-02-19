@@ -43,5 +43,15 @@ export async function GET(req: NextRequest) {
     gamesPlayed: r._count.id,
   }));
 
-  return NextResponse.json({ weekStart: weekStart.toISOString(), leaderboard });
+  // For weekly view, include the prize pool (total SOL collected this week)
+  let prizePoolSol: number | undefined;
+  if (period !== 'alltime') {
+    const payments = await prisma.hintPayment.aggregate({
+      where: { createdAt: { gte: weekStart } },
+      _sum: { amountSol: true },
+    });
+    prizePoolSol = payments._sum.amountSol ?? 0;
+  }
+
+  return NextResponse.json({ weekStart: weekStart.toISOString(), leaderboard, prizePoolSol });
 }
