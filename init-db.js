@@ -76,6 +76,8 @@ async function init() {
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    // Migrate: update existing hints with old 0.01 cost to 0.00001
+    await prisma.$executeRawUnsafe(`UPDATE "Hint" SET "costSol" = 0.00001 WHERE "costSol" > 0.00001`);
     console.log('Database tables initialized successfully');
   } catch (e) {
     console.error('DB init error:', e.message);
