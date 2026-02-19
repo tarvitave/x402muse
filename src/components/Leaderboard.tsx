@@ -81,9 +81,9 @@ export default function Leaderboard({ mode, refreshKey }: { mode?: string; refre
             <p className="text-xs text-gray-400">
               Week of {new Date(weeklyData.weekStart).toLocaleDateString()}
             </p>
-            {weeklyData.prizePoolSol !== undefined && weeklyData.prizePoolSol > 0 && (
+            {weeklyData.prizePoolSol !== undefined && (
               <p className="text-sm text-yellow-400 font-semibold mt-1">
-                Prize: {weeklyData.prizePoolSol} SOL
+                Weekly Prize: {weeklyData.prizePoolSol} SOL
               </p>
             )}
           </div>
