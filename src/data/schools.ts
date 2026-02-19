@@ -51,7 +51,7 @@ export const schools: Painting[] = [
   },
   {
     id: 'school-yale',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Yale_University_shield.svg/600px-Yale_University_shield.svg.png',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Yale_University_Shield_1.svg/600px-Yale_University_Shield_1.svg.png',
     blurLevel: 'blur(20px)',
     artist: 'Yale',
     title: 'Yale University',
