@@ -5,7 +5,54 @@ on:
     branches: [ "main" ]
 
 jobs:
+  security-scan:
+    name: CodeQL Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: javascript-typescript
+        queries: security-and-quality
+
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        output: codeql-results
+        upload: always
+
+    - name: Check for Critical/High Severity Issues
+      run: |
+        # Parse SARIF results for critical/high severity issues
+        SARIF_FILE=$(find codeql-results -name '*.sarif' | head -1)
+        if [ -z "$SARIF_FILE" ]; then
+          echo "No SARIF file found, skipping check"
+          exit 0
+        fi
+
+        # Count critical and high severity results
+        CRITICAL_COUNT=$(jq '[.runs[].results[] | select(.level == "error")] | length' "$SARIF_FILE" 2>/dev/null || echo "0")
+        HIGH_COUNT=$(jq '[.runs[].results[] | select(.level == "warning" and .properties.["problem.severity"] == "error")] | length' "$SARIF_FILE" 2>/dev/null || echo "0")
+
+        echo "Critical issues: $CRITICAL_COUNT"
+        echo "High issues: $HIGH_COUNT"
+
+        TOTAL=$((CRITICAL_COUNT + HIGH_COUNT))
+        if [ "$TOTAL" -gt 0 ]; then
+          echo "::error::Found $TOTAL critical/high severity security issue(s). Blocking deployment."
+          jq '.runs[].results[] | select(.level == "error") | {rule: .ruleId, message: .message.text, location: .locations[0].physicalLocation.artifactLocation.uri}' "$SARIF_FILE" 2>/dev/null || true
+          exit 1
+        fi
+
+        echo "No critical/high severity issues found. Proceeding with deployment."
+
   deploy:
+    needs: security-scan
     runs-on: ubuntu-latest
     steps:
     # 1. Checkout the code in the runner

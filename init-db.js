@@ -80,6 +80,15 @@ async function init() {
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "PageView" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "path" TEXT NOT NULL,
+        "referrer" TEXT,
+        "userAgent" TEXT,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     // Migrate: update existing hints with old 0.01 cost to 0.00001
     await prisma.$executeRawUnsafe(`UPDATE "Hint" SET "costSol" = 0.00001 WHERE "costSol" > 0.00001`);
 
