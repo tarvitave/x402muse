@@ -56,7 +56,10 @@ export default function AnalyticsPage() {
   useEffect(() => {
     fetch('/api/admin/analytics')
       .then(r => r.json())
-      .then(setData)
+      .then(d => {
+        if (d.error) return;
+        setData(d);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);

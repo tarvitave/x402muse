@@ -1,7 +1,9 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Privacy Policy - Muse x402',
+  title: 'Privacy Policy',
+  description: 'Privacy Policy for Muse x402 trivia game. Learn how we handle wallet addresses, game data, and Solana transactions.',
+  alternates: { canonical: 'https://x402muse.com/privacy' },
 };
 
 export default function PrivacyPolicy() {

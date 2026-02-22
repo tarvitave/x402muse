@@ -1,7 +1,9 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Terms of Use - Muse x402',
+  title: 'Terms of Use',
+  description: 'Terms of Use for Muse x402 trivia game. Rules for gameplay, Solana micropayments, weekly prizes, and fair play.',
+  alternates: { canonical: 'https://x402muse.com/terms' },
 };
 
 export default function TermsOfUse() {
