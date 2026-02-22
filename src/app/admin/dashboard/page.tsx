@@ -26,6 +26,85 @@ interface EditForm {
     hints: { id: string; label: string; content: string }[];
 }
 
+interface MetricsSummary {
+  summary: {
+    today: number;
+    week: number;
+    month: number;
+    total: number;
+    users: number;
+    scores: number;
+  };
+  topPages: { path: string; views: number }[];
+  gameStats: { mode: string; games: number; totalPoints: number }[];
+}
+
+function MetricsOverview() {
+  const [metrics, setMetrics] = useState<MetricsSummary | null>(null);
+
+  useEffect(() => {
+    fetch('/api/admin/analytics')
+      .then(r => r.json())
+      .then(setMetrics)
+      .catch(() => {});
+  }, []);
+
+  if (!metrics) return <div className="animate-pulse text-gray-400 text-sm p-4">Loading metrics...</div>;
+
+  return (
+    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+      <h2 className="text-xl font-semibold mb-4">Quick Metrics</h2>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="bg-gray-900 rounded-lg p-3">
+          <p className="text-gray-400 text-xs uppercase">Views Today</p>
+          <p className="text-xl font-bold text-white">{metrics.summary.today.toLocaleString()}</p>
+        </div>
+        <div className="bg-gray-900 rounded-lg p-3">
+          <p className="text-gray-400 text-xs uppercase">Views 7 Days</p>
+          <p className="text-xl font-bold text-white">{metrics.summary.week.toLocaleString()}</p>
+        </div>
+        <div className="bg-gray-900 rounded-lg p-3">
+          <p className="text-gray-400 text-xs uppercase">Views Month</p>
+          <p className="text-xl font-bold text-white">{metrics.summary.month.toLocaleString()}</p>
+        </div>
+        <div className="bg-gray-900 rounded-lg p-3">
+          <p className="text-gray-400 text-xs uppercase">All-Time Views</p>
+          <p className="text-xl font-bold text-white">{metrics.summary.total.toLocaleString()}</p>
+        </div>
+        <div className="bg-gray-900 rounded-lg p-3">
+          <p className="text-gray-400 text-xs uppercase">Users</p>
+          <p className="text-xl font-bold text-purple-400">{metrics.summary.users.toLocaleString()}</p>
+        </div>
+        <div className="bg-gray-900 rounded-lg p-3">
+          <p className="text-gray-400 text-xs uppercase">Games Played</p>
+          <p className="text-xl font-bold text-yellow-400">{metrics.summary.scores.toLocaleString()}</p>
+        </div>
+      </div>
+      {metrics.gameStats.length > 0 && (
+        <div className="mt-4 flex gap-4">
+          {metrics.gameStats.map(gs => (
+            <span key={gs.mode} className="text-xs text-gray-400">
+              {gs.mode === 'painting' ? 'Paintings' : 'Schools'}: {gs.games} games, {gs.totalPoints} pts
+            </span>
+          ))}
+        </div>
+      )}
+      {metrics.topPages.length > 0 && (
+        <div className="mt-3 border-t border-gray-700 pt-3">
+          <p className="text-xs text-gray-400 uppercase mb-2">Top Pages (30 days)</p>
+          <div className="flex flex-wrap gap-3">
+            {metrics.topPages.slice(0, 5).map((p, i) => (
+              <span key={i} className="text-xs bg-gray-900 px-2 py-1 rounded text-gray-300">
+                <span className="font-mono">{p.path}</span> <span className="text-gray-500">{p.views}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const ITEMS_PER_PAGE = 20;
 
 export default function AdminDashboard() {
@@ -186,7 +265,9 @@ export default function AdminDashboard() {
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold mb-4">Admin Dashboard</h1>
         <AdminNav />
-        
+
+        <MetricsOverview />
+
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
           <h2 className="text-xl font-semibold mb-4">Content Management</h2>
           <div className="flex items-center justify-between mb-4">
