@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { GameMode } from '@/lib/types';
 
 interface ModeSelectorProps {
@@ -11,8 +12,9 @@ export default function ModeSelector({ mode, onChange }: ModeSelectorProps) {
   return (
     <div className="flex items-center gap-2 px-8 pt-4">
       <div className="flex rounded-lg overflow-hidden border border-gray-600">
-        <button
-          onClick={() => onChange('painting')}
+        <Link
+          href="/painters"
+          onClick={(e) => { e.preventDefault(); onChange('painting'); window.history.pushState(null, '', '/painters'); }}
           className={`px-4 py-2 text-sm font-semibold transition-colors ${
             mode === 'painting'
               ? 'bg-purple-600 text-white'
@@ -20,9 +22,10 @@ export default function ModeSelector({ mode, onChange }: ModeSelectorProps) {
           }`}
         >
           Guess the Artist
-        </button>
-        <button
-          onClick={() => onChange('school')}
+        </Link>
+        <Link
+          href="/school"
+          onClick={(e) => { e.preventDefault(); onChange('school'); window.history.pushState(null, '', '/school'); }}
           className={`px-4 py-2 text-sm font-semibold transition-colors border-l border-gray-600 ${
             mode === 'school'
               ? 'bg-purple-600 text-white'
@@ -30,7 +33,7 @@ export default function ModeSelector({ mode, onChange }: ModeSelectorProps) {
           }`}
         >
           Guess the School
-        </button>
+        </Link>
       </div>
     </div>
   );

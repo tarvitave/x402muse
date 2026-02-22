@@ -4,6 +4,10 @@ const { PrismaClient } = require('@prisma/client');
 async function init() {
   const prisma = new PrismaClient();
   try {
+    // Enable WAL mode for better crash recovery and checkpoint any pending WAL data
+    await prisma.$executeRawUnsafe(`PRAGMA journal_mode=WAL`);
+    await prisma.$executeRawUnsafe(`PRAGMA wal_checkpoint(TRUNCATE)`);
+
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "Painting" (
         "id" TEXT NOT NULL PRIMARY KEY,
@@ -78,6 +82,15 @@ async function init() {
     `);
     // Migrate: update existing hints with old 0.01 cost to 0.00001
     await prisma.$executeRawUnsafe(`UPDATE "Hint" SET "costSol" = 0.00001 WHERE "costSol" > 0.00001`);
+
+    // Log existing data counts for diagnostics
+    const users = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM "User"`);
+    const scores = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM "Score"`);
+    const paintings = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM "Painting"`);
+    console.log(`Database stats: ${users[0].count} users, ${scores[0].count} scores, ${paintings[0].count} paintings`);
+
+    // Final WAL checkpoint to ensure all data is flushed to main DB file
+    await prisma.$executeRawUnsafe(`PRAGMA wal_checkpoint(TRUNCATE)`);
     console.log('Database tables initialized successfully');
   } catch (e) {
     console.error('DB init error:', e.message);

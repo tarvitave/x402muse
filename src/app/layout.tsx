@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import SolanaProvider from "@/components/SolanaProvider";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,6 +23,7 @@ export default function RootLayout({
         <SolanaProvider>
           <Header />
           {children}
+          <Footer />
         </SolanaProvider>
       </body>
     </html>

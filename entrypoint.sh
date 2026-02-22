@@ -3,4 +3,6 @@
 echo "Initializing database..."
 node init-db.js
 echo "Starting server..."
+
+# Use exec so Node receives SIGTERM directly from Docker for graceful shutdown
 exec node server.js
