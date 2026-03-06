@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { paintings as initialPaintings } from '@/data/paintings';
+import { schools as initialSchools } from '@/data/schools';
 import { Painting, GameMode } from '@/lib/types';
 import HintCard from './HintCard';
 
@@ -99,12 +100,20 @@ export function GameContent({ mode, onScoreSubmitted }: { mode: GameMode; onScor
         } else if (mode === 'painting') {
           setAllItems(initialPaintings);
           setCurrentItem(initialPaintings[0]);
+        } else if (mode === 'school') {
+          setAllItems(initialSchools);
+          const randomIndex = Math.floor(Math.random() * initialSchools.length);
+          setCurrentItem(initialSchools[randomIndex]);
         }
       })
       .catch(() => {
         if (mode === 'painting') {
           setAllItems(initialPaintings);
           setCurrentItem(initialPaintings[0]);
+        } else if (mode === 'school') {
+          setAllItems(initialSchools);
+          const randomIndex = Math.floor(Math.random() * initialSchools.length);
+          setCurrentItem(initialSchools[randomIndex]);
         }
       })
       .finally(() => setIsLoading(false));
@@ -136,7 +145,7 @@ export function GameContent({ mode, onScoreSubmitted }: { mode: GameMode; onScor
 
   const handleGuess = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isCloseMatch(guess, currentItem.answer)) {
+    if (isCloseMatch(guess.trim(), currentItem.answer)) {
       setIsCorrect(true);
       submitScore(currentItem.id, hintsUsedCount);
     } else {
