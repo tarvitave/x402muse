@@ -40,10 +40,10 @@ export default function HintCard({ hint, onUnlock }: HintCardProps) {
         const {
             context: { slot: minContextSlot },
             value: { blockhash, lastValidBlockHeight }
-        } = await connection.getLatestBlockhashAndContext();
+        } = await connection.getLatestBlockhashAndContext('confirmed');
 
         const signature = await sendTransaction(transaction, connection, { minContextSlot });
-        await connection.confirmTransaction({ blockhash, lastValidBlockHeight, signature });
+        await connection.confirmTransaction({ blockhash, lastValidBlockHeight, signature }, 'confirmed');
 
 
         const retryResponse = await fetch(`/api/hints/${hint.id}`, {

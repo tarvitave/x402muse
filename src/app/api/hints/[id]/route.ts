@@ -24,7 +24,17 @@ export async function GET(
 
     try {
       const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com');
-      const tx = await connection.getTransaction(signature, { maxSupportedTransactionVersion: 0 });
+
+      // Retry fetching the transaction — RPC nodes may lag indexing even after confirmation
+      let tx = null;
+      for (let i = 0; i < 5; i++) {
+        tx = await connection.getTransaction(signature, {
+          maxSupportedTransactionVersion: 0,
+          commitment: 'confirmed',
+        });
+        if (tx) break;
+        await new Promise((r) => setTimeout(r, 1500));
+      }
 
       if (!tx || !tx.meta || tx.meta.err !== null) {
         throw new Error('Invalid or failed transaction');
