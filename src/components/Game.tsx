@@ -162,6 +162,7 @@ export function GameContent({ mode, onScoreSubmitted }: { mode: GameMode; onScor
   const handleHintUnlock = (id: string, content: string) => {
     setUnlockedHints((prev) => ({ ...prev, [id]: content }));
     setHintsUsedCount((prev) => prev + 1);
+    onScoreSubmitted?.();
   };
 
   const handleNext = () => {
