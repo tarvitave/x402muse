@@ -1,15 +1,58 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import { MuseWalletName } from '@/lib/wallet/MuseWalletAdapter';
 import { useWalletUIStore } from '@/lib/wallet/walletStore';
 import UserProfileModal from './UserProfileModal';
 
+function MuseLogo() {
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      {/* Palette body */}
+      <ellipse cx="18" cy="19" rx="14" ry="13" fill="#1e1b4b" stroke="#7c3aed" strokeWidth="1.5"/>
+      {/* Thumb hole */}
+      <ellipse cx="24" cy="28" rx="4" ry="3.5" fill="#111827" stroke="#7c3aed" strokeWidth="1.2"/>
+      {/* Paint dots */}
+      <circle cx="11" cy="14" r="2.8" fill="#f59e0b"/>
+      <circle cx="17" cy="11" r="2.8" fill="#10b981"/>
+      <circle cx="23" cy="13" r="2.8" fill="#3b82f6"/>
+      <circle cx="26" cy="19" r="2.8" fill="#ef4444"/>
+      <circle cx="12" cy="21" r="2.8" fill="#a855f7"/>
+    </svg>
+  );
+}
+
+function PainterIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M3 17c0-1.1.9-2 2-2h1.5l6-6-1.5-1.5-6 6V15H3v2z" fill="currentColor" opacity="0.9"/>
+      <path d="M14.5 2.5a1.5 1.5 0 0 1 2.12 0l.88.88a1.5 1.5 0 0 1 0 2.12l-1.5 1.5-3-3 1.5-1.5z" fill="currentColor"/>
+      <path d="M11.5 5.5l3 3-6.5 6.5-3-3 6.5-6.5z" fill="currentColor" opacity="0.7"/>
+    </svg>
+  );
+}
+
+function SchoolIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      {/* Cap top */}
+      <polygon points="10,3 19,7.5 10,12 1,7.5" fill="currentColor"/>
+      {/* Left tassel string */}
+      <rect x="9.2" y="7.5" width="1.6" height="6" rx="0.8" fill="currentColor" opacity="0.8"/>
+      {/* Left side of gown */}
+      <path d="M4 9.5v5c0 1.5 2.5 3 6 3s6-1.5 6-3v-5L10 12l-6-2.5z" fill="currentColor" opacity="0.65"/>
+    </svg>
+  );
+}
+
 export default function Header() {
   const { wallets, wallet, connected, connecting, publicKey, disconnect, select, connect } = useWallet();
   const openModal = useWalletUIStore((s) => s.openModal);
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [pendingConnect, setPendingConnect] = useState(false);
@@ -93,22 +136,55 @@ export default function Header() {
     ? `${publicKey.toBase58().slice(0, 4)}...${publicKey.toBase58().slice(-4)}`
     : '';
 
-  const headerTitle = (
-    <div>
-      <h1 className="text-xl font-bold leading-tight">Muse x402</h1>
-      <p className="text-xs text-gray-400">Demo of x402 protocol using gamification</p>
-    </div>
+  const logo = (
+    <Link href="/" className="flex items-center gap-2.5 group shrink-0">
+      <MuseLogo />
+      <div>
+        <span className="text-xl font-bold leading-tight group-hover:text-purple-400 transition-colors">Muse x402</span>
+        <p className="text-xs text-gray-400 leading-tight">x402 protocol demo</p>
+      </div>
+    </Link>
+  );
+
+  const navLinks = (
+    <nav className="flex items-center gap-1">
+      <Link
+        href="/painters"
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+          pathname === '/painters' || pathname === '/'
+            ? 'bg-purple-600 text-white'
+            : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+        }`}
+      >
+        <PainterIcon />
+        Painters Test
+      </Link>
+      <Link
+        href="/school"
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+          pathname === '/school'
+            ? 'bg-purple-600 text-white'
+            : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+        }`}
+      >
+        <SchoolIcon />
+        School Test
+      </Link>
+    </nav>
   );
 
   if (!mounted) return (
-    <header className="flex justify-between items-center p-4 bg-gray-900 text-white">
-      {headerTitle}
+    <header className="flex justify-between items-center px-4 py-3 bg-gray-900 text-white border-b border-gray-800">
+      {logo}
     </header>
   );
 
   return (
-    <header className="flex justify-between items-center p-4 bg-gray-900 text-white">
-      {headerTitle}
+    <header className="flex items-center gap-4 px-4 py-3 bg-gray-900 text-white border-b border-gray-800">
+      {logo}
+      <div className="flex-1 flex justify-center">
+        {navLinks}
+      </div>
       <div className="flex items-center gap-2">
         {connecting && (
           <button
