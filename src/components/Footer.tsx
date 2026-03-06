@@ -13,6 +13,17 @@ export default function Footer() {
           </div>
 
           <div>
+            <h4 className="text-gray-300 font-medium text-sm mb-2">Resources</h4>
+            <ul className="space-y-1">
+              <li>
+                <Link href="/blog" className="text-gray-400 hover:text-white text-sm transition-colors">
+                  Blog
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          <div>
             <h4 className="text-gray-300 font-medium text-sm mb-2">Legal</h4>
             <ul className="space-y-1">
               <li>
