@@ -83,7 +83,10 @@ export default function Leaderboard({ mode, refreshKey }: { mode?: string; refre
             </p>
             {weeklyData.prizePoolSol !== undefined && (
               <p className="text-sm text-yellow-400 font-semibold mt-1">
-                Weekly Prize: {weeklyData.prizePoolSol} SOL
+                Weekly Prize:{' '}
+                {weeklyData.prizePoolSol > 0
+                  ? `${weeklyData.prizePoolSol.toFixed(6)} SOL`
+                  : '0 SOL — play and unlock hints to grow the prize!'}
               </p>
             )}
           </div>

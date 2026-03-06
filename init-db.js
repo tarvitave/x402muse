@@ -99,7 +99,8 @@ async function init() {
     const users = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM "User"`);
     const scores = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM "Score"`);
     const paintings = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM "Painting"`);
-    console.log(`Database stats: ${users[0].count} users, ${scores[0].count} scores, ${paintings[0].count} paintings`);
+    const payments = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count, COALESCE(SUM("amountSol"), 0) as total FROM "HintPayment"`);
+    console.log(`Database stats: ${users[0].count} users, ${scores[0].count} scores, ${paintings[0].count} paintings, ${payments[0].count} hint payments (${payments[0].total} SOL total)`);
 
     // Final WAL checkpoint to ensure all data is flushed to main DB file
     await prisma.$executeRawUnsafe(`PRAGMA wal_checkpoint(TRUNCATE)`);

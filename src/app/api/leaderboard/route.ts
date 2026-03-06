@@ -45,13 +45,17 @@ export async function GET(req: NextRequest) {
 
   // For weekly view, include the prize pool (total SOL collected this week)
   let prizePoolSol: number | undefined;
+  let paymentCount: number | undefined;
   if (period !== 'alltime') {
     const payments = await prisma.hintPayment.aggregate({
       where: { createdAt: { gte: weekStart } },
       _sum: { amountSol: true },
+      _count: { id: true },
     });
     prizePoolSol = payments._sum.amountSol ?? 0;
+    paymentCount = payments._count.id;
+    console.log(`Prize pool query: ${prizePoolSol} SOL from ${paymentCount} payments since ${weekStart.toISOString()}`);
   }
 
-  return NextResponse.json({ weekStart: weekStart.toISOString(), leaderboard, prizePoolSol });
+  return NextResponse.json({ weekStart: weekStart.toISOString(), leaderboard, prizePoolSol, paymentCount });
 }

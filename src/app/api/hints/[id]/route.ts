@@ -60,11 +60,13 @@ export async function GET(
             txSignature: signature,
           },
         });
-      } catch {
-        // Non-critical — don't block hint delivery if tracking fails
+        console.log(`HintPayment recorded: ${receivedSol} SOL for hint ${hint.id}`);
+      } catch (recordErr) {
+        // Log clearly — this is why the prize pool may show 0
+        console.error('HintPayment.create failed (prize pool will not update):', recordErr);
       }
 
-      return NextResponse.json({ content: hint.content });
+      return NextResponse.json({ content: hint.content, recordedSol: receivedSol });
     } catch (error) {
       console.error('Transaction verification failed:', error);
       return NextResponse.json({ error: 'Payment verification failed' }, { status: 400 });
