@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { SystemProgram, Transaction, PublicKey } from '@solana/web3.js';
+import { SystemProgram, Transaction, PublicKey, ComputeBudgetProgram } from '@solana/web3.js';
 import { Hint } from '@/lib/types';
 
 interface HintCardProps {
@@ -30,10 +30,11 @@ export default function HintCard({ hint, onUnlock }: HintCardProps) {
         const { paymentRequest } = await response.json();
         
         const transaction = new Transaction().add(
+          ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 5000 }),
           SystemProgram.transfer({
             fromPubkey: publicKey,
             toPubkey: new PublicKey(paymentRequest.recipient),
-            lamports: paymentRequest.amount * 1_000_000_000, // Convert SOL to lamports
+            lamports: Math.round(paymentRequest.amount * 1_000_000_000),
           })
         );
 

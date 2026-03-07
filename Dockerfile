@@ -25,6 +25,10 @@ COPY . .
 ENV DATABASE_URL="file:/app/prisma/db/prod.db"
 RUN npx prisma generate
 
+# Bake public env vars into the Next.js build
+ARG NEXT_PUBLIC_SOLANA_NETWORK=mainnet-beta
+ENV NEXT_PUBLIC_SOLANA_NETWORK=$NEXT_PUBLIC_SOLANA_NETWORK
+
 RUN \
   if [ -f yarn.lock ]; then yarn run build; \
   elif [ -f package-lock.json ]; then npm run build; \
