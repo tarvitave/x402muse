@@ -16,19 +16,26 @@ export async function POST(req: NextRequest) {
       await prisma.pageView.create({
         data: { path, referrer, userAgent },
       });
-    } catch {
+    } catch (prismaErr) {
       // Table might exist but Prisma model might not match — try raw SQL
-      const id = crypto.randomUUID();
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO "PageView" ("id", "path", "referrer", "userAgent", "createdAt") VALUES (?, ?, ?, ?, ?)`,
-        id, path, referrer, userAgent, new Date().toISOString()
-      );
+      try {
+        const { randomUUID } = await import('crypto');
+        const id = randomUUID();
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO "PageView" ("id", "path", "referrer", "userAgent", "createdAt") VALUES (?, ?, ?, ?, ?)`,
+          id, path, referrer, userAgent, new Date().toISOString()
+        );
+      } catch (sqlErr) {
+        // Analytics is non-critical — log both errors but don't return 500
+        console.error('Track prisma error:', prismaErr);
+        console.error('Track sql error:', sqlErr);
+      }
     }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('Track error:', err);
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
+    return NextResponse.json({ ok: true }); // non-critical — don't 500 the browser
   }
 }
 
