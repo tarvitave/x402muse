@@ -38,14 +38,13 @@ export default function HintCard({ hint, onUnlock }: HintCardProps) {
           })
         );
 
-        const {
-            context: { slot: minContextSlot },
-            value: { blockhash, lastValidBlockHeight }
-        } = await connection.getLatestBlockhashAndContext('confirmed');
+        const { context: { slot: minContextSlot } } = await connection.getLatestBlockhashAndContext('confirmed');
 
         const signature = await sendTransaction(transaction, connection, { minContextSlot });
-        await connection.confirmTransaction({ blockhash, lastValidBlockHeight, signature }, 'confirmed');
 
+        // Don't confirmTransaction client-side — the WebSocket proxy doesn't support it
+        // and it causes TransactionExpiredBlockheightExceededError.
+        // The server retry loop handles waiting for confirmation.
 
         const retryResponse = await fetch(`/api/hints/${hint.id}`, {
           headers: {

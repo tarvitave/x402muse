@@ -23,17 +23,18 @@ export async function GET(
     }
 
     try {
-      const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com');
+      const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
 
-      // Retry fetching the transaction — RPC nodes may lag indexing even after confirmation
+      // Retry fetching the transaction — client skips confirmTransaction so the tx
+      // may still be in flight when we receive the signature. Retry for up to ~20s.
       let tx = null;
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 10; i++) {
         tx = await connection.getTransaction(signature, {
           maxSupportedTransactionVersion: 0,
           commitment: 'confirmed',
         });
         if (tx) break;
-        await new Promise((r) => setTimeout(r, 1500));
+        await new Promise((r) => setTimeout(r, 2000));
       }
 
       if (!tx || !tx.meta || tx.meta.err !== null) {
