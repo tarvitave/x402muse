@@ -11,8 +11,9 @@ import MuseWalletModal from '@/components/wallet/MuseWalletModal';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
 const SolanaProvider: FC<{ children: React.ReactNode }> = ({ children }) => {
-  const network = (process.env.NEXT_PUBLIC_SOLANA_NETWORK as WalletAdapterNetwork) || WalletAdapterNetwork.Devnet;
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  const network = (process.env.NEXT_PUBLIC_SOLANA_NETWORK as WalletAdapterNetwork) || WalletAdapterNetwork.Mainnet;
+  // Route RPC calls through our server proxy to avoid 403s from the public mainnet endpoint
+  const endpoint = '/api/solana-rpc';
   // Phantom and Solflare auto-register via Wallet Standard — only custom wallets go here
   const wallets = useMemo(() => [new MuseWalletAdapter()], []);
 
