@@ -28,6 +28,8 @@ RUN npx prisma generate
 # Bake public env vars into the Next.js build
 ARG NEXT_PUBLIC_SOLANA_NETWORK=mainnet-beta
 ENV NEXT_PUBLIC_SOLANA_NETWORK=$NEXT_PUBLIC_SOLANA_NETWORK
+ARG NEXT_PUBLIC_SITE_URL=https://x402muse.com
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 
 RUN \
   if [ -f yarn.lock ]; then yarn run build; \
