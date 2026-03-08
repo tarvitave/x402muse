@@ -36,7 +36,7 @@ export default function BalanceDisplay({ publicKey }: BalanceDisplayProps) {
       {loading ? (
         <p className="text-lg text-gray-500">Loading...</p>
       ) : balance !== null ? (
-        <p className="text-2xl font-bold">{balance.toFixed(4)} SOL</p>
+        <p className="text-2xl font-bold text-white">{balance.toFixed(4)} SOL</p>
       ) : (
         <p className="text-lg text-red-400">Failed to load</p>
       )}
