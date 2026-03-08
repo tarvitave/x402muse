@@ -103,7 +103,9 @@ jobs:
           cd ~/x402muse
 
           # 2. Build Docker Image (with progress plain to see logs)
-          docker build --progress=plain -t muse-app .
+          docker build --progress=plain \
+            --build-arg NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}" \
+            -t muse-app .
 
           # Cleanup Old App Container
           docker stop muse-app || true
