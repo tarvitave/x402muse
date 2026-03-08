@@ -35,6 +35,10 @@ export async function POST(req: NextRequest) {
     const session = await res.json();
     if (!res.ok) {
       console.error('Stripe API error:', session);
+      // 404 on this endpoint = account not approved for Crypto Onramp yet
+      if (res.status === 404 || session.error?.message?.includes('Unrecognized request URL')) {
+        return NextResponse.json({ error: 'pending_approval' }, { status: 503 });
+      }
       throw new Error(session.error?.message || `Stripe returned ${res.status}`);
     }
 

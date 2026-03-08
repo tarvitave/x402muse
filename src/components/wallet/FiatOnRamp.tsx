@@ -56,6 +56,8 @@ export default function FiatOnRamp({ publicKey }: FiatOnRampProps) {
         const data = await res.json();
         if (data.error === 'not_configured') {
           setStripeError('not_configured');
+        } else if (data.error === 'pending_approval') {
+          setStripeError('pending_approval');
         } else if (data.client_secret) {
           setStripeClientSecret(data.client_secret);
         } else {
@@ -137,6 +139,8 @@ export default function FiatOnRamp({ publicKey }: FiatOnRampProps) {
         <>
           {stripeError === 'not_configured' ? (
             <NotConfigured provider="Stripe" envVars={['STRIPE_SECRET_KEY', 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY']} />
+          ) : stripeError === 'pending_approval' ? (
+            <PendingApproval />
           ) : stripeError ? (
             <p className="text-red-400 text-sm">Error: {stripeError}</p>
           ) : (
@@ -178,6 +182,24 @@ export default function FiatOnRamp({ publicKey }: FiatOnRampProps) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function PendingApproval() {
+  return (
+    <div className="bg-gray-900 border border-yellow-600/40 rounded-lg p-5 text-center space-y-3">
+      <p className="text-2xl">⏳</p>
+      <p className="text-yellow-400 font-semibold">Stripe Crypto Onramp — Pending Approval</p>
+      <p className="text-gray-400 text-sm">
+        Your Stripe account needs to be approved for the Crypto Onramp feature before purchases can go live.
+      </p>
+      <ol className="text-left text-sm text-gray-300 space-y-1 list-decimal list-inside">
+        <li>Go to <span className="text-purple-400">Stripe Dashboard → Products → Crypto Onramp</span></li>
+        <li>Submit the onramp application</li>
+        <li>Wait for approval (~48 hours)</li>
+      </ol>
+      <p className="text-gray-500 text-xs">Once approved, this widget will activate automatically — no code changes needed.</p>
     </div>
   );
 }
