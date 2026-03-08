@@ -5,7 +5,7 @@ export interface EncryptedWalletData {
   publicKey: string;
 }
 
-export type WalletModalView = 'choose' | 'create' | 'import' | 'backup' | 'unlock' | 'dashboard';
+export type WalletModalView = 'choose' | 'create' | 'import' | 'backup' | 'unlock' | 'dashboard' | 'onramp';
 
 export interface TransactionRecord {
   signature: string;

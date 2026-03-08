@@ -25,6 +25,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "sharp": "^0.34.5",
+    "stripe": "^20.4.1",
     "tweetnacl": "^1.0.3",
     "zustand": "^5.0.10"
   },

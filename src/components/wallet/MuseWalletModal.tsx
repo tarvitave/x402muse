@@ -17,6 +17,7 @@ import SeedPhraseDisplay from './SeedPhraseDisplay';
 import PasswordInput from './PasswordInput';
 import BalanceDisplay from './BalanceDisplay';
 import TransactionHistory from './TransactionHistory';
+import FiatOnRamp from './FiatOnRamp';
 
 export default function MuseWalletModal() {
   const { wallet, wallets, publicKey, disconnect } = useWallet();
@@ -185,6 +186,7 @@ export default function MuseWalletModal() {
             {modalView === 'import' && 'Import Wallet'}
             {modalView === 'unlock' && 'Unlock Wallet'}
             {modalView === 'dashboard' && 'Wallet'}
+            {modalView === 'onramp' && 'Add Funds'}
           </h2>
           <button onClick={handleClose} className="text-gray-400 hover:text-white text-xl">&times;</button>
         </div>
@@ -347,12 +349,23 @@ export default function MuseWalletModal() {
             </div>
 
             <button
+              onClick={() => setView('onramp')}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg"
+            >
+              Add Funds
+            </button>
+            <button
               onClick={handleDeleteWallet}
               className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 text-sm py-2 px-4 rounded-lg"
             >
               Delete Wallet
             </button>
           </div>
+        )}
+
+        {/* On-Ramp View */}
+        {modalView === 'onramp' && publicKey && (
+          <FiatOnRamp publicKey={publicKey} />
         )}
       </div>
     </div>

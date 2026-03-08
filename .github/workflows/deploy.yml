@@ -131,6 +131,8 @@ jobs:
             -e TREASURY_PRIVATE_KEY="${{ secrets.TREASURY_PRIVATE_KEY }}" \
             -e WEEKLY_PAYOUT_SOL="${{ secrets.WEEKLY_PAYOUT_SOL }}" \
             -e CRON_SECRET="${{ secrets.CRON_SECRET }}" \
+            -e STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
+            -e MOONPAY_SECRET_KEY="${{ secrets.MOONPAY_SECRET_KEY }}" \
             muse-app
 
           # Setup Caddy for automatic HTTPS (if not already running)
