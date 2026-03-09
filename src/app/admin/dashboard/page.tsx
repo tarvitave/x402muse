@@ -105,6 +105,69 @@ function MetricsOverview() {
   );
 }
 
+interface WeekWinner {
+  weekStart: string;
+  userName: string;
+  amountSol: number;
+  txSignature: string | null;
+}
+
+function WinnersPanel() {
+  const [winners, setWinners] = useState<WeekWinner[]>([]);
+
+  useEffect(() => {
+    fetch('/api/winners?limit=12')
+      .then(r => r.json())
+      .then(d => setWinners(d.winners ?? []))
+      .catch(() => {});
+  }, []);
+
+  return (
+    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+      <h2 className="text-xl font-semibold mb-4">Weekly Winners</h2>
+      {winners.length === 0 ? (
+        <p className="text-gray-400 text-sm">No payouts recorded yet.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-gray-300 border-b border-gray-600">
+              <th className="text-left pb-2">Week of</th>
+              <th className="text-left pb-2">Winner</th>
+              <th className="text-right pb-2">Prize (SOL)</th>
+              <th className="text-right pb-2">Tx</th>
+            </tr>
+          </thead>
+          <tbody>
+            {winners.map((w) => (
+              <tr key={w.weekStart} className="border-b border-gray-700/50 last:border-0">
+                <td className="py-2 text-gray-300">
+                  {new Date(w.weekStart).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                </td>
+                <td className="py-2 text-white font-medium">{w.userName}</td>
+                <td className="py-2 text-right text-yellow-400 font-bold">{w.amountSol.toFixed(6)}</td>
+                <td className="py-2 text-right">
+                  {w.txSignature ? (
+                    <a
+                      href={`https://solscan.io/tx/${w.txSignature}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-purple-400 hover:text-purple-300 text-xs font-mono"
+                    >
+                      {w.txSignature.slice(0, 8)}…
+                    </a>
+                  ) : (
+                    <span className="text-gray-500 text-xs">—</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 const ITEMS_PER_PAGE = 20;
 
 export default function AdminDashboard() {
@@ -267,6 +330,7 @@ export default function AdminDashboard() {
         <AdminNav />
 
         <MetricsOverview />
+        <WinnersPanel />
 
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
           <h2 className="text-xl font-semibold mb-4">Content Management</h2>
