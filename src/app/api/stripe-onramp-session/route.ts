@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
       throw new Error(session.error?.message || `Stripe returned ${res.status}`);
     }
 
+    console.log('Stripe session transaction_details:', JSON.stringify(session.transaction_details, null, 2));
     return NextResponse.json({ client_secret: session.client_secret });
   } catch (err) {
     console.error('Stripe onramp session error:', err);
