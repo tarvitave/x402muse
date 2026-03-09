@@ -14,26 +14,26 @@ export async function POST(req: NextRequest) {
 
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim();
 
-    // Build body manually — URLSearchParams percent-encodes brackets which Stripe won't parse
-    const parts = [
-      `transaction_details[destination_currency]=sol`,
-      `transaction_details[destination_network]=solana`,
-      `transaction_details[wallet_addresses][solana]=${encodeURIComponent(walletAddress)}`,
-      `transaction_details[supported_destination_currencies][0]=sol`,
-      `transaction_details[supported_destination_networks][0]=solana`,
-    ];
-    if (ip) parts.push(`customer_ip_address=${encodeURIComponent(ip)}`);
-    const body = parts.join('&');
+    const payload: Record<string, unknown> = {
+      transaction_details: {
+        destination_currency: 'sol',
+        destination_network: 'solana',
+        wallet_addresses: { solana: walletAddress },
+        supported_destination_currencies: ['sol'],
+        supported_destination_networks: ['solana'],
+      },
+    };
+    if (ip) payload.customer_ip_address = ip;
 
-    console.log('Stripe request body:', body);
+    console.log('Stripe request payload:', JSON.stringify(payload));
     const res = await fetch('https://api.stripe.com/v1/crypto/onramp_sessions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${stripeKey}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
         'Stripe-Version': '2023-10-16',
       },
-      body,
+      body: JSON.stringify(payload),
     });
 
     const session = await res.json();
