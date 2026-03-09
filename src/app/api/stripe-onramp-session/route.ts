@@ -14,9 +14,12 @@ export async function POST(req: NextRequest) {
 
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim();
 
-    // transaction_details fields are output-only in Stripe's API — they reflect user selections, not inputs
-    const parts = [`customer_ip_address=${encodeURIComponent(ip || '')}`].filter(Boolean);
-    const body = parts.join('&') || ' ';
+    const parts = [
+      `transaction_details[wallet_addresses][solana]=${encodeURIComponent(walletAddress)}`,
+      `transaction_details[lock_wallet_address]=true`,
+    ];
+    if (ip) parts.push(`customer_ip_address=${encodeURIComponent(ip)}`);
+    const body = parts.join('&');
 
     const res = await fetch('https://api.stripe.com/v1/crypto/onramp_sessions', {
       method: 'POST',
