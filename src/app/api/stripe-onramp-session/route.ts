@@ -25,12 +25,13 @@ export async function POST(req: NextRequest) {
     if (ip) parts.push(`customer_ip_address=${encodeURIComponent(ip)}`);
     const body = parts.join('&');
 
+    console.log('Stripe request body:', body);
     const res = await fetch('https://api.stripe.com/v1/crypto/onramp_sessions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${stripeKey}`,
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Stripe-Version': '2022-11-15',
+        'Stripe-Version': '2023-10-16',
       },
       body,
     });
