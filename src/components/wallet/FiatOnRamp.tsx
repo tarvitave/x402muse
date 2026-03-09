@@ -117,9 +117,18 @@ export default function FiatOnRamp({ publicKey }: FiatOnRampProps) {
 
       {status === 'ready' && (
         <>
-          <p className="text-xs text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 rounded px-3 py-2">
-            In the widget below, select <strong>SOL</strong> as the destination currency and <strong>Solana</strong> as the network.
-          </p>
+          <div className="bg-gray-900 border border-gray-700 rounded-lg p-3">
+            <p className="text-xs text-gray-400 mb-1">Your Solana wallet address — paste this into the widget below:</p>
+            <div className="flex items-center gap-2">
+              <code className="text-xs text-purple-300 font-mono break-all flex-1">{walletAddress}</code>
+              <button
+                onClick={() => navigator.clipboard.writeText(walletAddress)}
+                className="shrink-0 text-xs bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
           <div id="stripe-onramp-element" className="min-h-[500px]" />
         </>
       )}

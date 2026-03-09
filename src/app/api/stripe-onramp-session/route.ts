@@ -14,12 +14,9 @@ export async function POST(req: NextRequest) {
 
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim();
 
-    const parts = [
-      `transaction_details[wallet_addresses][solana]=${encodeURIComponent(walletAddress)}`,
-      `transaction_details[lock_wallet_address]=true`,
-    ];
+    const parts: string[] = [];
     if (ip) parts.push(`customer_ip_address=${encodeURIComponent(ip)}`);
-    const body = parts.join('&');
+    const body = parts.join('&') || 'unused=1';
 
     const res = await fetch('https://api.stripe.com/v1/crypto/onramp_sessions', {
       method: 'POST',
