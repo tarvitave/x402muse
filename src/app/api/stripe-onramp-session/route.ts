@@ -19,6 +19,8 @@ export async function POST(req: NextRequest) {
       'transaction_details[destination_currency]': 'sol',
       'transaction_details[destination_network]': 'solana',
       'transaction_details[wallet_addresses][solana]': walletAddress,
+      'transaction_details[supported_destination_currencies][0]': 'sol',
+      'transaction_details[supported_destination_networks][0]': 'solana',
     });
     if (ip) body.set('customer_ip_address', ip);
 
