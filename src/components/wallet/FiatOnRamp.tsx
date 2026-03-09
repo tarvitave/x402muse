@@ -9,43 +9,18 @@ interface FiatOnRampProps {
   publicKey: PublicKey;
 }
 
-type Provider = 'stripe' | 'moonpay';
-
 export default function FiatOnRamp({ publicKey }: FiatOnRampProps) {
   const { setView } = useWalletUIStore();
   const walletAddress = publicKey.toBase58();
 
-  const [detecting, setDetecting] = useState(true);
-  const [provider, setProvider] = useState<Provider>('moonpay');
-  const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
-  const [stripeError, setStripeError] = useState<string | null>(null);
-  const [stripeScriptLoaded, setStripeScriptLoaded] = useState(false);
-  const [moonpayUrl, setMoonpayUrl] = useState<string | null>(null);
-  const [moonpayError, setMoonpayError] = useState<string | null>(null);
-  const stripeWidgetMounted = useRef(false);
+  const [status, setStatus] = useState<'loading' | 'pending_approval' | 'not_configured' | 'error' | 'ready'>('loading');
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [stripeJsLoaded, setStripeJsLoaded] = useState(false);
+  const [onrampScriptLoaded, setOnrampScriptLoaded] = useState(false);
+  const widgetMounted = useRef(false);
 
-  // Step 1: detect region
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/detect-region');
-        const { is_us } = await res.json();
-        if (!cancelled) {
-          setProvider(is_us ? 'stripe' : 'moonpay');
-        }
-      } catch {
-        if (!cancelled) setProvider('moonpay'); // safe fallback
-      } finally {
-        if (!cancelled) setDetecting(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  // Step 2a: Stripe — fetch client_secret after region detected
-  useEffect(() => {
-    if (detecting || provider !== 'stripe') return;
     (async () => {
       try {
         const res = await fetch('/api/stripe-onramp-session', {
@@ -55,79 +30,46 @@ export default function FiatOnRamp({ publicKey }: FiatOnRampProps) {
         });
         const data = await res.json();
         if (data.error === 'not_configured') {
-          setStripeError('not_configured');
+          setStatus('not_configured');
         } else if (data.error === 'pending_approval') {
-          setStripeError('pending_approval');
+          setStatus('pending_approval');
         } else if (data.client_secret) {
-          setStripeClientSecret(data.client_secret);
+          setClientSecret(data.client_secret);
+          setStatus('ready');
         } else {
-          setStripeError(data.error || 'Unknown error');
+          setErrorMsg(data.error || 'Unknown error from Stripe');
+          setStatus('error');
         }
       } catch (err) {
-        setStripeError(String(err));
+        setErrorMsg(String(err));
+        setStatus('error');
       }
     })();
-  }, [detecting, provider, walletAddress]);
+  }, [walletAddress]);
 
-  // Step 2b: MoonPay — build and sign URL after region detected
   useEffect(() => {
-    if (detecting || provider !== 'moonpay') return;
-    const moonpayKey = process.env.NEXT_PUBLIC_MOONPAY_KEY;
-    if (!moonpayKey) {
-      setMoonpayError('not_configured');
-      return;
-    }
-    (async () => {
-      try {
-        const baseUrl = new URL('https://buy.moonpay.com');
-        baseUrl.searchParams.set('apiKey', moonpayKey);
-        baseUrl.searchParams.set('currencyCode', 'sol');
-        baseUrl.searchParams.set('walletAddress', walletAddress);
-        baseUrl.searchParams.set('colorCode', '%236d28d9'); // purple
-        baseUrl.searchParams.set('language', 'en');
-
-        const res = await fetch('/api/moonpay-sign', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: baseUrl.toString() }),
-        });
-        const { signedUrl } = await res.json();
-        setMoonpayUrl(signedUrl);
-      } catch (err) {
-        setMoonpayError(String(err));
-      }
-    })();
-  }, [detecting, provider, walletAddress]);
-
-  // Step 3: mount Stripe widget once script loaded and client_secret available
-  useEffect(() => {
-    if (!stripeScriptLoaded || !stripeClientSecret || stripeWidgetMounted.current) return;
+    if (!stripeJsLoaded || !onrampScriptLoaded || !clientSecret || widgetMounted.current) return;
     const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
     if (!stripeKey) return;
-
     try {
       // @ts-expect-error — StripeOnramp is injected by the Stripe script tag
       const onramp = StripeOnramp(stripeKey);
-      const session = onramp.createSession({ clientSecret: stripeClientSecret });
+      const session = onramp.createSession({ clientSecret });
       session.mount('#stripe-onramp-element');
-      stripeWidgetMounted.current = true;
+      widgetMounted.current = true;
     } catch (err) {
       console.error('Stripe widget mount error:', err);
-      setStripeError(String(err));
+      setErrorMsg(String(err));
+      setStatus('error');
     }
-  }, [stripeScriptLoaded, stripeClientSecret]);
-
-  if (detecting) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 gap-3">
-        <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-400 text-sm">Detecting your region...</p>
-      </div>
-    );
-  }
+  }, [stripeJsLoaded, onrampScriptLoaded, clientSecret]);
 
   return (
     <div className="space-y-4">
+      {/* Load Stripe scripts immediately so they're ready when the session arrives */}
+      <Script src="https://js.stripe.com/v3/" onLoad={() => setStripeJsLoaded(true)} />
+      <Script src="https://crypto-js.stripe.com/crypto-onramp-outer.js" onLoad={() => setOnrampScriptLoaded(true)} />
+
       <button
         onClick={() => setView('dashboard')}
         className="text-gray-400 hover:text-white text-sm flex items-center gap-1"
@@ -135,89 +77,47 @@ export default function FiatOnRamp({ publicKey }: FiatOnRampProps) {
         ← Back to wallet
       </button>
 
-      {provider === 'stripe' && (
-        <>
-          {stripeError === 'not_configured' ? (
-            <NotConfigured provider="Stripe" envVars={['STRIPE_SECRET_KEY', 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY']} />
-          ) : stripeError === 'pending_approval' ? (
-            <PendingApproval />
-          ) : stripeError ? (
-            <p className="text-red-400 text-sm">Error: {stripeError}</p>
-          ) : (
-            <>
-              <Script
-                src="https://crypto-js.stripe.com/crypto-onramp-outer.js"
-                onLoad={() => setStripeScriptLoaded(true)}
-              />
-              {!stripeClientSecret ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : (
-                <div id="stripe-onramp-element" className="min-h-[500px]" />
-              )}
-            </>
-          )}
-        </>
+      {status === 'loading' && (
+        <div className="flex items-center justify-center py-8">
+          <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+        </div>
       )}
 
-      {provider === 'moonpay' && (
-        <>
-          {moonpayError === 'not_configured' ? (
-            <NotConfigured provider="MoonPay" envVars={['NEXT_PUBLIC_MOONPAY_KEY', 'MOONPAY_SECRET_KEY']} />
-          ) : moonpayError ? (
-            <p className="text-red-400 text-sm">Error: {moonpayError}</p>
-          ) : !moonpayUrl ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : (
-            <iframe
-              src={moonpayUrl}
-              className="w-full rounded-lg border border-gray-700"
-              style={{ height: '500px' }}
-              allow="accelerometer; autoplay; camera; gyroscope; payment"
-              title="MoonPay — Buy SOL"
-            />
-          )}
-        </>
+      {status === 'not_configured' && (
+        <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 text-center space-y-3">
+          <p className="text-yellow-400 text-sm font-semibold">Stripe not configured</p>
+          <p className="text-gray-400 text-xs">Add the following to your GitHub secrets and deploy:</p>
+          <div className="space-y-1">
+            {['STRIPE_SECRET_KEY', 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'].map((v) => (
+              <code key={v} className="block text-xs bg-gray-800 text-purple-300 rounded px-2 py-1">{v}</code>
+            ))}
+          </div>
+        </div>
       )}
-    </div>
-  );
-}
 
-function PendingApproval() {
-  return (
-    <div className="bg-gray-900 border border-yellow-600/40 rounded-lg p-5 text-center space-y-3">
-      <p className="text-2xl">⏳</p>
-      <p className="text-yellow-400 font-semibold">Stripe Crypto Onramp — Pending Approval</p>
-      <p className="text-gray-400 text-sm">
-        Your Stripe account needs to be approved for the Crypto Onramp feature before purchases can go live.
-      </p>
-      <ol className="text-left text-sm text-gray-300 space-y-1 list-decimal list-inside">
-        <li>Go to <span className="text-purple-400">Stripe Dashboard → Products → Crypto Onramp</span></li>
-        <li>Submit the onramp application</li>
-        <li>Wait for approval (~48 hours)</li>
-      </ol>
-      <p className="text-gray-500 text-xs">Once approved, this widget will activate automatically — no code changes needed.</p>
-    </div>
-  );
-}
+      {status === 'pending_approval' && (
+        <div className="bg-gray-900 border border-yellow-600/40 rounded-lg p-5 text-center space-y-3">
+          <p className="text-2xl">⏳</p>
+          <p className="text-yellow-400 font-semibold">Stripe Crypto Onramp — Pending Approval</p>
+          <p className="text-gray-400 text-sm">
+            Your Stripe account needs to be approved for the Crypto Onramp feature before purchases can go live.
+          </p>
+          <ol className="text-left text-sm text-gray-300 space-y-1 list-decimal list-inside">
+            <li>Go to <span className="text-purple-400">Stripe Dashboard → Products → Crypto Onramp</span></li>
+            <li>Submit the onramp application</li>
+            <li>Wait for approval (~48 hours)</li>
+          </ol>
+          <p className="text-gray-500 text-xs">Once approved, this widget will activate automatically — no code changes needed.</p>
+        </div>
+      )}
 
-function NotConfigured({ provider, envVars }: { provider: string; envVars: string[] }) {
-  return (
-    <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 text-center space-y-3">
-      <p className="text-yellow-400 text-sm font-semibold">{provider} not configured</p>
-      <p className="text-gray-400 text-xs">
-        Add the following to your GitHub secrets and deploy:
-      </p>
-      <div className="space-y-1">
-        {envVars.map((v) => (
-          <code key={v} className="block text-xs bg-gray-800 text-purple-300 rounded px-2 py-1">
-            {v}
-          </code>
-        ))}
-      </div>
+      {status === 'error' && (
+        <p className="text-red-400 text-sm">Error: {errorMsg}</p>
+      )}
+
+      {status === 'ready' && (
+        <div id="stripe-onramp-element" className="min-h-[500px]" />
+      )}
     </div>
   );
 }

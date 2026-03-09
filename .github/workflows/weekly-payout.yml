@@ -16,3 +16,4 @@ jobs:
             "https://x402muse.com/api/payout" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json"
+        continue-on-error: true
