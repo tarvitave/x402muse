@@ -14,39 +14,29 @@ export async function POST(req: NextRequest) {
 
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim();
 
-    const payload: Record<string, unknown> = {
-      transaction_details: {
-        destination_currency: 'sol',
-        destination_network: 'solana',
-        wallet_addresses: { solana: walletAddress },
-        supported_destination_currencies: ['sol'],
-        supported_destination_networks: ['solana'],
-      },
-    };
-    if (ip) payload.customer_ip_address = ip;
+    // transaction_details fields are output-only in Stripe's API — they reflect user selections, not inputs
+    const parts = [`customer_ip_address=${encodeURIComponent(ip || '')}`].filter(Boolean);
+    const body = parts.join('&') || ' ';
 
-    console.log('Stripe request payload:', JSON.stringify(payload));
     const res = await fetch('https://api.stripe.com/v1/crypto/onramp_sessions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${stripeKey}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
         'Stripe-Version': '2023-10-16',
       },
-      body: JSON.stringify(payload),
+      body,
     });
 
     const session = await res.json();
     if (!res.ok) {
       console.error('Stripe API error:', session);
-      // 404 on this endpoint = account not approved for Crypto Onramp yet
       if (res.status === 404 || session.error?.message?.includes('Unrecognized request URL')) {
         return NextResponse.json({ error: 'pending_approval' }, { status: 503 });
       }
       throw new Error(session.error?.message || `Stripe returned ${res.status}`);
     }
 
-    console.log('Stripe full session:', JSON.stringify(session, null, 2));
     return NextResponse.json({ client_secret: session.client_secret });
   } catch (err) {
     console.error('Stripe onramp session error:', err);

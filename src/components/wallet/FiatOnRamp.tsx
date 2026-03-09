@@ -116,7 +116,12 @@ export default function FiatOnRamp({ publicKey }: FiatOnRampProps) {
       )}
 
       {status === 'ready' && (
-        <div id="stripe-onramp-element" className="min-h-[500px]" />
+        <>
+          <p className="text-xs text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 rounded px-3 py-2">
+            In the widget below, select <strong>SOL</strong> as the destination currency and <strong>Solana</strong> as the network.
+          </p>
+          <div id="stripe-onramp-element" className="min-h-[500px]" />
+        </>
       )}
     </div>
   );
