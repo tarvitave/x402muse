@@ -117,6 +117,9 @@ export default function FiatOnRamp({ publicKey }: FiatOnRampProps) {
 
       {status === 'ready' && (
         <>
+          <p className="text-xs text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 rounded px-3 py-2">
+            In the widget below, select <strong>SOL</strong> as the destination currency and <strong>Solana</strong> as the network.
+          </p>
           <div className="bg-gray-900 border border-gray-700 rounded-lg p-3">
             <p className="text-xs text-gray-400 mb-1">Your Solana wallet address — paste this into the widget below:</p>
             <div className="flex items-center gap-2">
