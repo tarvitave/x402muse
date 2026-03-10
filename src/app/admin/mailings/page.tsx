@@ -871,6 +871,38 @@ function CampaignsTab() {
     });
   }
 
+  async function handleClone(c: Campaign) {
+    const res = await fetch('/api/admin/mailings/campaigns', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mailingListId: c.mailingListId,
+        name: c.name ? `Copy of ${c.name}` : `Copy of ${c.subject}`,
+        subject: c.subject,
+        bodyMarkdown: c.bodyMarkdown,
+        fromName: c.fromName,
+        fromEmail: c.fromEmail,
+        sendRatePerMinute: c.sendRatePerMinute,
+      }),
+    });
+    if (res.ok) {
+      const { campaign: clone } = await res.json();
+      load();
+      // Open the clone for editing immediately
+      setEditingId(clone.id);
+      setEditPreview(false);
+      setEditFields({
+        name: clone.name,
+        subject: clone.subject,
+        bodyMarkdown: clone.bodyMarkdown,
+        fromName: clone.fromName,
+        fromEmail: clone.fromEmail,
+        sendRatePerMinute: clone.sendRatePerMinute,
+        mailingListId: clone.mailingListId,
+      });
+    }
+  }
+
   async function handleEditSave(id: string) {
     setEditSaving(true);
     await fetch(`/api/admin/mailings/campaigns?id=${id}`, {
@@ -1092,6 +1124,14 @@ function CampaignsTab() {
                         className="text-xs text-blue-400 hover:text-blue-300 border border-blue-800 rounded px-2 py-1.5"
                       >
                         Edit
+                      </button>
+                    )}
+                    {c.status === 'completed' && (
+                      <button
+                        onClick={() => handleClone(c)}
+                        className="text-xs text-green-400 hover:text-green-300 border border-green-800 rounded px-2 py-1.5"
+                      >
+                        Clone
                       </button>
                     )}
                     <button
