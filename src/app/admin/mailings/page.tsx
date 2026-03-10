@@ -18,6 +18,7 @@ interface BounceSummary {
   clean: number;
   soft: number;
   hard: number;
+  unsubscribed: number;
 }
 
 interface Contact {
@@ -319,10 +320,11 @@ function ListsTab() {
                       {list.description && <p className="text-xs text-gray-400 mt-0.5">{list.description}</p>}
                       <div className="flex items-center gap-3 mt-1 flex-wrap">
                         <span className="text-xs text-gray-500">{list._count.contacts} contacts · {list._count.campaigns} campaigns</span>
-                        {bs && (bs.soft > 0 || bs.hard > 0) && (
+                        {bs && (bs.soft > 0 || bs.hard > 0 || bs.unsubscribed > 0) && (
                           <span className="flex gap-2 text-xs">
                             {bs.hard > 0 && <span className="text-red-400">{bs.hard} hard bounce{bs.hard !== 1 ? 's' : ''}</span>}
                             {bs.soft > 0 && <span className="text-yellow-400">{bs.soft} soft bounce{bs.soft !== 1 ? 's' : ''}</span>}
+                            {bs.unsubscribed > 0 && <span className="text-gray-400">{bs.unsubscribed} unsubscribed</span>}
                           </span>
                         )}
                       </div>

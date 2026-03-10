@@ -26,7 +26,11 @@ export async function GET(req: NextRequest) {
     _count: true,
   });
 
-  const summary: Record<string, number> = { total: 0, clean: 0, soft: 0, hard: 0 };
+  const unsubCount = await prisma.mailingListContact.count({
+    where: { mailingListId: listId, unsubscribed: true },
+  });
+
+  const summary: Record<string, number> = { total: 0, clean: 0, soft: 0, hard: 0, unsubscribed: unsubCount };
   for (const b of bounceSummary) {
     const key = b.bounceType ?? 'clean';
     summary[key] = b._count;

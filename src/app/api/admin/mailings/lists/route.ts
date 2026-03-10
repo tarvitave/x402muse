@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
               mailingListId: list.id,
               email: c.email,
               name: c.name ?? undefined,
+              unsubscribeToken: randomUUID(),
             })),
           });
         }

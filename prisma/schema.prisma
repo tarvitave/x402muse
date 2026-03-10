@@ -91,14 +91,17 @@ model MailingList {
 }
 
 model MailingListContact {
-  id            String      @id @default(uuid())
-  mailingListId String
-  email         String
-  name          String?
-  bounceType    String?     // 'soft' | 'hard' | null
-  bouncedAt     DateTime?
-  createdAt     DateTime    @default(now())
-  mailingList   MailingList @relation(fields: [mailingListId], references: [id], onDelete: Cascade)
+  id               String      @id @default(uuid())
+  mailingListId    String
+  email            String
+  name             String?
+  bounceType       String?     // 'soft' | 'hard' | null
+  bouncedAt        DateTime?
+  unsubscribed     Boolean     @default(false)
+  unsubscribedAt   DateTime?
+  unsubscribeToken String?     @unique
+  createdAt        DateTime    @default(now())
+  mailingList      MailingList @relation(fields: [mailingListId], references: [id], onDelete: Cascade)
 }
 
 model EmailCampaign {

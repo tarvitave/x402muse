@@ -129,6 +129,9 @@ async function init() {
       "name" TEXT,
       "bounceType" TEXT,
       "bouncedAt" DATETIME,
+      "unsubscribed" BOOLEAN NOT NULL DEFAULT false,
+      "unsubscribedAt" DATETIME,
+      "unsubscribeToken" TEXT UNIQUE,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "MailingListContact_mailingListId_fkey" FOREIGN KEY ("mailingListId") REFERENCES "MailingList" ("id") ON DELETE CASCADE ON UPDATE CASCADE
     )
@@ -179,6 +182,28 @@ async function init() {
   await runSafe(prisma, 'MailingListContact.bouncedAt migration', () =>
     prisma.$executeRawUnsafe(`ALTER TABLE "MailingListContact" ADD COLUMN "bouncedAt" DATETIME`)
   );
+  await runSafe(prisma, 'MailingListContact.unsubscribed migration', () =>
+    prisma.$executeRawUnsafe(`ALTER TABLE "MailingListContact" ADD COLUMN "unsubscribed" BOOLEAN NOT NULL DEFAULT false`)
+  );
+  await runSafe(prisma, 'MailingListContact.unsubscribedAt migration', () =>
+    prisma.$executeRawUnsafe(`ALTER TABLE "MailingListContact" ADD COLUMN "unsubscribedAt" DATETIME`)
+  );
+  await runSafe(prisma, 'MailingListContact.unsubscribeToken migration', () =>
+    prisma.$executeRawUnsafe(`ALTER TABLE "MailingListContact" ADD COLUMN "unsubscribeToken" TEXT UNIQUE`)
+  );
+  // Populate unsubscribeToken for any existing contacts that don't have one
+  await runSafe(prisma, 'MailingListContact.unsubscribeToken populate', async () => {
+    const contacts = await prisma.$queryRawUnsafe(
+      `SELECT "id" FROM "MailingListContact" WHERE "unsubscribeToken" IS NULL`
+    );
+    for (const c of contacts) {
+      const { randomUUID } = require('crypto');
+      await prisma.$executeRawUnsafe(
+        `UPDATE "MailingListContact" SET "unsubscribeToken" = ? WHERE "id" = ?`,
+        randomUUID(), c.id
+      );
+    }
+  });
   await runSafe(prisma, 'EmailSend.bounceType migration', () =>
     prisma.$executeRawUnsafe(`ALTER TABLE "EmailSend" ADD COLUMN "bounceType" TEXT`)
   );

@@ -56,8 +56,9 @@ export async function POST(req: NextRequest) {
     if (action === 'start') {
       await prisma.emailSend.deleteMany({ where: { campaignId } });
 
-      // Filter out bounced contacts based on preference
+      // Filter out bounced and unsubscribed contacts
       const contacts = campaign.mailingList.contacts.filter(c => {
+        if (c.unsubscribed) return false;                    // always skip unsubscribed
         if (c.bounceType === 'hard') return false;           // always skip hard bounces
         if (c.bounceType === 'soft' && !includeSoftBounces) return false; // skip soft unless opted in
         return true;
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
 
       const skippedHard = campaign.mailingList.contacts.filter(c => c.bounceType === 'hard').length;
       const skippedSoft = campaign.mailingList.contacts.filter(c => c.bounceType === 'soft').length;
+      const skippedUnsub = campaign.mailingList.contacts.filter(c => c.unsubscribed).length;
 
       await prisma.emailSend.createMany({
         data: contacts.map(c => ({
@@ -84,6 +86,7 @@ export async function POST(req: NextRequest) {
         queued: contacts.length,
         skippedHard,
         skippedSoft: includeSoftBounces ? 0 : skippedSoft,
+        skippedUnsub,
       });
     }
 
@@ -139,11 +142,31 @@ async function sendCampaign(campaignId: string) {
       break;
     }
 
-    const htmlBody = await marked.parse(campaign.bodyMarkdown);
+    const baseHtml = await marked.parse(campaign.bodyMarkdown);
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
 
     for (const send of pending) {
       const current = await prisma.emailCampaign.findUnique({ where: { id: campaignId } });
       if (!current || current.status !== 'sending') return;
+
+      // Look up unsubscribe token for this recipient
+      const contact = await prisma.mailingListContact.findFirst({
+        where: { email: send.email, mailingList: { campaigns: { some: { id: campaignId } } } },
+        select: { id: true, bounceType: true, unsubscribeToken: true },
+      });
+
+      const unsubUrl = contact?.unsubscribeToken
+        ? `${siteUrl}/api/unsubscribe?token=${contact.unsubscribeToken}`
+        : null;
+
+      const unsubHtml = unsubUrl
+        ? `<p style="margin-top:32px;font-size:12px;color:#888;text-align:center;">` +
+          `<a href="${unsubUrl}" style="color:#888;">Unsubscribe</a> from this mailing list.</p>`
+        : '';
+      const unsubText = unsubUrl ? `\n\n---\nUnsubscribe: ${unsubUrl}` : '';
+
+      const htmlBody = baseHtml + unsubHtml;
+      const textBody = campaign.bodyMarkdown + unsubText;
 
       try {
         await transporter.sendMail({
@@ -153,7 +176,7 @@ async function sendCampaign(campaignId: string) {
           to: send.name ? `"${send.name}" <${send.email}>` : send.email,
           subject: campaign.subject,
           html: htmlBody,
-          text: campaign.bodyMarkdown,
+          text: textBody,
         });
         await prisma.emailSend.update({
           where: { id: send.id },
@@ -173,9 +196,6 @@ async function sendCampaign(campaignId: string) {
         });
 
         // Mark the contact with the bounce type (upgrade hard bounce, set soft if not already bounced)
-        const contact = await prisma.mailingListContact.findFirst({
-          where: { email: send.email, mailingList: { campaigns: { some: { id: campaignId } } } },
-        });
         if (contact) {
           const existingBounce = contact.bounceType;
           // Hard bounce always wins; only set soft if not already marked
