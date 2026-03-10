@@ -805,6 +805,12 @@ function CampaignsTab() {
   const [editPreview, setEditPreview] = useState(false);
   const [editPreviewHtml, setEditPreviewHtml] = useState('');
 
+  // Failures panel state
+  interface FailedSend { id: string; email: string; name: string | null; bounceType: string | null; error: string | null; createdAt: string }
+  const [failuresId, setFailuresId] = useState<string | null>(null);
+  const [failures, setFailures] = useState<FailedSend[]>([]);
+  const [failuresLoading, setFailuresLoading] = useState(false);
+
   const load = useCallback(() => {
     setLoading(true);
     Promise.all([
@@ -901,6 +907,16 @@ function CampaignsTab() {
         mailingListId: clone.mailingListId,
       });
     }
+  }
+
+  async function handleViewFailures(campaignId: string) {
+    if (failuresId === campaignId) { setFailuresId(null); return; }
+    setFailuresId(campaignId);
+    setFailuresLoading(true);
+    const res = await fetch(`/api/admin/mailings/send?campaignId=${campaignId}&failures=1`);
+    const data = await res.json();
+    setFailures(data.failures ?? []);
+    setFailuresLoading(false);
   }
 
   async function handleEditSave(id: string) {
@@ -1134,6 +1150,14 @@ function CampaignsTab() {
                         Clone
                       </button>
                     )}
+                    {stats?.failed > 0 && (
+                      <button
+                        onClick={() => handleViewFailures(c.id)}
+                        className={`text-xs border rounded px-2 py-1.5 ${failuresId === c.id ? 'text-orange-300 border-orange-600' : 'text-orange-400 hover:text-orange-300 border-orange-800'}`}
+                      >
+                        {failuresId === c.id ? 'Hide Failures' : `${stats.failed} Failed`}
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDelete(c.id, c.subject)}
                       className="text-red-400 hover:text-red-300 text-xs px-2 py-1.5 border border-red-800 rounded"
@@ -1142,6 +1166,39 @@ function CampaignsTab() {
                     </button>
                   </div>
                 </div>
+
+                {/* Failures Panel */}
+                {failuresId === c.id && (
+                  <div className="border-t border-orange-900/40 mt-3 pt-3">
+                    <p className="text-xs text-orange-400 font-semibold mb-2">Failed sends — error details:</p>
+                    {failuresLoading ? (
+                      <p className="text-gray-500 text-xs animate-pulse">Loading…</p>
+                    ) : failures.length === 0 ? (
+                      <p className="text-gray-500 text-xs">No failure details recorded.</p>
+                    ) : (
+                      <div className="space-y-1.5 max-h-72 overflow-y-auto">
+                        {failures.map(f => (
+                          <div key={f.id} className="bg-gray-900/60 rounded px-3 py-2 text-xs">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="text-gray-200 font-medium">{f.email}</span>
+                              {f.name && <span className="text-gray-500">{f.name}</span>}
+                              {f.bounceType && (
+                                <span className={`font-bold text-[10px] uppercase px-1.5 py-0.5 rounded ${f.bounceType === 'hard' ? 'bg-red-900/60 text-red-400' : 'bg-yellow-900/60 text-yellow-400'}`}>
+                                  {f.bounceType} bounce
+                                </span>
+                              )}
+                            </div>
+                            {f.error && (
+                              <p className="text-red-300/80 font-mono text-[10px] leading-relaxed break-all">
+                                {f.error.length > 300 ? f.error.slice(0, 300) + '…' : f.error}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

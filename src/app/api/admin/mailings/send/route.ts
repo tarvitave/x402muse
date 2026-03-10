@@ -4,9 +4,12 @@ import { randomUUID } from 'crypto';
 import nodemailer from 'nodemailer';
 import { marked } from 'marked';
 
-// GET /api/admin/mailings/send?campaignId=xxx — get send status + bounce counts
+// GET /api/admin/mailings/send?campaignId=xxx[&failures=1] — get send status + bounce counts
+// Add &failures=1 to also return the list of failed sends with error details
 export async function GET(req: NextRequest) {
-  const campaignId = new URL(req.url).searchParams.get('campaignId');
+  const params = new URL(req.url).searchParams;
+  const campaignId = params.get('campaignId');
+  const includeFailures = params.get('failures') === '1';
   if (!campaignId) return NextResponse.json({ error: 'campaignId required' }, { status: 400 });
 
   const campaign = await prisma.emailCampaign.findUnique({ where: { id: campaignId } });
@@ -28,6 +31,15 @@ export async function GET(req: NextRequest) {
   for (const b of bounceCounts) {
     if (b.bounceType === 'soft') stats.softBounce = b._count;
     if (b.bounceType === 'hard') stats.hardBounce = b._count;
+  }
+
+  if (includeFailures) {
+    const failures = await prisma.emailSend.findMany({
+      where: { campaignId, status: 'failed' },
+      select: { id: true, email: true, name: true, bounceType: true, error: true, sentAt: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return NextResponse.json({ campaign, stats, failures });
   }
 
   return NextResponse.json({ campaign, stats });
