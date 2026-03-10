@@ -68,16 +68,23 @@ export default function MailingsPage() {
 function ListsTab() {
   const [lists, setLists] = useState<MailingList[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [createError, setCreateError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = () => {
     setLoading(true);
+    setLoadError('');
     fetch('/api/admin/mailings/lists')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => setLists(d.lists ?? []))
+      .catch(err => setLoadError(String(err)))
       .finally(() => setLoading(false));
   };
 
@@ -87,27 +94,39 @@ function ListsTab() {
     e.preventDefault();
     if (!name.trim()) return;
     setUploading(true);
+    setCreateError('');
 
-    const file = fileRef.current?.files?.[0];
-    if (file) {
-      const form = new FormData();
-      form.append('name', name);
-      if (description) form.append('description', description);
-      form.append('file', file);
-      await fetch('/api/admin/mailings/lists', { method: 'POST', body: form });
-    } else {
-      await fetch('/api/admin/mailings/lists', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description }),
-      });
+    try {
+      const file = fileRef.current?.files?.[0];
+      let res: Response;
+      if (file) {
+        const form = new FormData();
+        form.append('name', name);
+        if (description) form.append('description', description);
+        form.append('file', file);
+        res = await fetch('/api/admin/mailings/lists', { method: 'POST', body: form });
+      } else {
+        res = await fetch('/api/admin/mailings/lists', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, description }),
+        });
+      }
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
+
+      setName('');
+      setDescription('');
+      if (fileRef.current) fileRef.current.value = '';
+      load();
+    } catch (err) {
+      setCreateError(String(err));
+    } finally {
+      setUploading(false);
     }
-
-    setName('');
-    setDescription('');
-    if (fileRef.current) fileRef.current.value = '';
-    setUploading(false);
-    load();
   }
 
   async function handleDelete(id: string, listName: string) {
@@ -160,11 +179,15 @@ function ListsTab() {
           >
             {uploading ? 'Creating…' : 'Create List'}
           </button>
+          {createError && (
+            <p className="text-red-400 text-sm mt-2">Error: {createError}</p>
+          )}
         </form>
       </div>
 
       <div>
         <h2 className="text-lg font-semibold mb-3">Your Lists</h2>
+        {loadError && <p className="text-red-400 text-sm mb-2">Failed to load: {loadError}</p>}
         {loading ? (
           <p className="text-gray-400 text-sm animate-pulse">Loading…</p>
         ) : lists.length === 0 ? (
