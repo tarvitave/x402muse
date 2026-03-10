@@ -135,6 +135,11 @@ jobs:
             -e CRON_SECRET="${{ secrets.CRON_SECRET }}" \
             -e STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
             -e MOONPAY_SECRET_KEY="${{ secrets.MOONPAY_SECRET_KEY }}" \
+            -e ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}" \
+            -e SMTP_HOST="${{ secrets.SMTP_HOST }}" \
+            -e SMTP_PORT="${{ secrets.SMTP_PORT }}" \
+            -e SMTP_USER="${{ secrets.SMTP_USER }}" \
+            -e SMTP_PASS="${{ secrets.SMTP_PASS }}" \
             muse-app
 
           # Setup Caddy for automatic HTTPS (if not already running)

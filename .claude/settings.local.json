@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(git push:*)",
+      "Bash(npm install stripe --legacy-peer-deps)"
+    ]
+  }
+}

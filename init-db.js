@@ -92,6 +92,57 @@ async function init() {
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "PageView_createdAt_idx" ON "PageView" ("createdAt")`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "PageView_path_idx" ON "PageView" ("path")`);
     console.log('PageView table ready');
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "MailingList" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "name" TEXT NOT NULL,
+        "description" TEXT,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "MailingListContact" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "mailingListId" TEXT NOT NULL,
+        "email" TEXT NOT NULL,
+        "name" TEXT,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "MailingListContact_mailingListId_fkey" FOREIGN KEY ("mailingListId") REFERENCES "MailingList" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "MailingListContact_mailingListId_idx" ON "MailingListContact" ("mailingListId")`);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "EmailCampaign" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "mailingListId" TEXT NOT NULL,
+        "subject" TEXT NOT NULL,
+        "bodyMarkdown" TEXT NOT NULL,
+        "fromName" TEXT NOT NULL,
+        "fromEmail" TEXT NOT NULL,
+        "status" TEXT NOT NULL DEFAULT 'draft',
+        "sendRatePerMinute" INTEGER NOT NULL DEFAULT 60,
+        "totalSent" INTEGER NOT NULL DEFAULT 0,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "EmailCampaign_mailingListId_fkey" FOREIGN KEY ("mailingListId") REFERENCES "MailingList" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+      )
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "EmailSend" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "campaignId" TEXT NOT NULL,
+        "email" TEXT NOT NULL,
+        "name" TEXT,
+        "status" TEXT NOT NULL DEFAULT 'pending',
+        "error" TEXT,
+        "sentAt" DATETIME,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "EmailSend_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "EmailCampaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmailSend_campaignId_idx" ON "EmailSend" ("campaignId")`);
+    console.log('Mailing tables ready');
     // Migrate: update existing hints with old 0.01 cost to 0.00001
     await prisma.$executeRawUnsafe(`UPDATE "Hint" SET "costSol" = 0.00001 WHERE "costSol" > 0.00001`);
 
