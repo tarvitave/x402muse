@@ -188,8 +188,12 @@ async function init() {
   await runSafe(prisma, 'MailingListContact.unsubscribedAt migration', () =>
     prisma.$executeRawUnsafe(`ALTER TABLE "MailingListContact" ADD COLUMN "unsubscribedAt" DATETIME`)
   );
+  // SQLite does not allow UNIQUE on ALTER TABLE ADD COLUMN — add plain column then add unique index separately
   await runSafe(prisma, 'MailingListContact.unsubscribeToken migration', () =>
-    prisma.$executeRawUnsafe(`ALTER TABLE "MailingListContact" ADD COLUMN "unsubscribeToken" TEXT UNIQUE`)
+    prisma.$executeRawUnsafe(`ALTER TABLE "MailingListContact" ADD COLUMN "unsubscribeToken" TEXT`)
+  );
+  await runSafe(prisma, 'MailingListContact.unsubscribeToken unique index', () =>
+    prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "MailingListContact_unsubscribeToken_key" ON "MailingListContact" ("unsubscribeToken") WHERE "unsubscribeToken" IS NOT NULL`)
   );
   // Populate unsubscribeToken for any existing contacts that don't have one
   await runSafe(prisma, 'MailingListContact.unsubscribeToken populate', async () => {
