@@ -95,6 +95,8 @@ model MailingListContact {
   mailingListId String
   email         String
   name          String?
+  bounceType    String?     // 'soft' | 'hard' | null
+  bouncedAt     DateTime?
   createdAt     DateTime    @default(now())
   mailingList   MailingList @relation(fields: [mailingListId], references: [id], onDelete: Cascade)
 }
@@ -121,6 +123,7 @@ model EmailSend {
   email        String
   name         String?
   status       String        @default("pending")
+  bounceType   String?       // 'soft' | 'hard' | null
   error        String?
   sentAt       DateTime?
   createdAt    DateTime      @default(now())

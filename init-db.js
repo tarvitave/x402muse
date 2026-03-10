@@ -142,6 +142,16 @@ async function init() {
       )
     `);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmailSend_campaignId_idx" ON "EmailSend" ("campaignId")`);
+    // Migrate: add bounce columns to existing tables
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "MailingListContact" ADD COLUMN "bounceType" TEXT`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE "MailingListContact" ADD COLUMN "bouncedAt" DATETIME`);
+      console.log('Added bounce columns to MailingListContact');
+    } catch (e) { /* columns already exist */ }
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "EmailSend" ADD COLUMN "bounceType" TEXT`);
+      console.log('Added bounceType column to EmailSend');
+    } catch (e) { /* column already exists */ }
     console.log('Mailing tables ready');
     // Migrate: update existing hints with old 0.01 cost to 0.00001
     await prisma.$executeRawUnsafe(`UPDATE "Hint" SET "costSol" = 0.00001 WHERE "costSol" > 0.00001`);

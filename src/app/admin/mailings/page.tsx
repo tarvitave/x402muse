@@ -13,6 +13,21 @@ interface MailingList {
   _count: { contacts: number; campaigns: number };
 }
 
+interface BounceSummary {
+  total: number;
+  clean: number;
+  soft: number;
+  hard: number;
+}
+
+interface Contact {
+  id: string;
+  email: string;
+  name: string | null;
+  bounceType: string | null;
+  bouncedAt: string | null;
+}
+
 interface Campaign {
   id: string;
   mailingListId: string;
@@ -90,6 +105,9 @@ function ListsTab() {
   const [uploading, setUploading] = useState(false);
   const [createError, setCreateError] = useState('');
   const [csvPreview, setCsvPreview] = useState<{ headers: string[]; rows: string[][] } | null>(null);
+  const [bounceSummaries, setBounceSummaries] = useState<Record<string, BounceSummary>>({});
+  const [expandedBounces, setExpandedBounces] = useState<string | null>(null);
+  const [bounceContacts, setBounceContacts] = useState<Contact[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = () => {
@@ -100,12 +118,50 @@ function ListsTab() {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
-      .then(d => setLists(d.lists ?? []))
+      .then(d => {
+        const lists: MailingList[] = d.lists ?? [];
+        setLists(lists);
+        // Load bounce summaries for each list
+        lists.forEach(list => {
+          fetch(`/api/admin/mailings/contacts?listId=${list.id}`)
+            .then(r => r.json())
+            .then(data => setBounceSummaries(prev => ({ ...prev, [list.id]: data.summary })))
+            .catch(() => {});
+        });
+      })
       .catch(err => setLoadError(String(err)))
       .finally(() => setLoading(false));
   };
 
   useEffect(load, []);
+
+  async function handleViewBounces(listId: string) {
+    if (expandedBounces === listId) { setExpandedBounces(null); return; }
+    const res = await fetch(`/api/admin/mailings/contacts?listId=${listId}&bounceType=bounced`);
+    const data = await res.json();
+    setBounceContacts(data.contacts ?? []);
+    setExpandedBounces(listId);
+  }
+
+  async function handleClearBounce(contactId: string) {
+    await fetch(`/api/admin/mailings/contacts?id=${contactId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bounceType: null }),
+    });
+    setBounceContacts(prev => prev.filter(c => c.id !== contactId));
+    load();
+  }
+
+  async function handleSetBounce(contactId: string, bounceType: 'soft' | 'hard') {
+    await fetch(`/api/admin/mailings/contacts?id=${contactId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bounceType }),
+    });
+    setBounceContacts(prev => prev.map(c => c.id === contactId ? { ...c, bounceType } : c));
+    load();
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -251,24 +307,75 @@ function ListsTab() {
         ) : lists.length === 0 ? (
           <p className="text-gray-500 text-sm">No mailing lists yet.</p>
         ) : (
-          <div className="space-y-2">
-            {lists.map(list => (
-              <div key={list.id} className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex items-center justify-between">
-                <div>
-                  <p className="font-semibold">{list.name}</p>
-                  {list.description && <p className="text-xs text-gray-400 mt-0.5">{list.description}</p>}
-                  <p className="text-xs text-gray-500 mt-1">
-                    {list._count.contacts} contacts · {list._count.campaigns} campaigns
-                  </p>
+          <div className="space-y-3">
+            {lists.map(list => {
+              const bs = bounceSummaries[list.id];
+              const isExpanded = expandedBounces === list.id;
+              return (
+                <div key={list.id} className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+                  <div className="p-4 flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold">{list.name}</p>
+                      {list.description && <p className="text-xs text-gray-400 mt-0.5">{list.description}</p>}
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
+                        <span className="text-xs text-gray-500">{list._count.contacts} contacts · {list._count.campaigns} campaigns</span>
+                        {bs && (bs.soft > 0 || bs.hard > 0) && (
+                          <span className="flex gap-2 text-xs">
+                            {bs.hard > 0 && <span className="text-red-400">{bs.hard} hard bounce{bs.hard !== 1 ? 's' : ''}</span>}
+                            {bs.soft > 0 && <span className="text-yellow-400">{bs.soft} soft bounce{bs.soft !== 1 ? 's' : ''}</span>}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      {bs && (bs.soft > 0 || bs.hard > 0) && (
+                        <button
+                          onClick={() => handleViewBounces(list.id)}
+                          className="text-xs text-yellow-400 hover:text-yellow-300 border border-yellow-700 rounded px-2 py-1"
+                        >
+                          {isExpanded ? 'Hide' : 'Bounces'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDelete(list.id, list.name)}
+                        className="text-red-400 hover:text-red-300 text-xs px-3 py-1 border border-red-800 rounded"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="border-t border-gray-700 px-4 pb-4">
+                      <p className="text-xs text-gray-400 mt-3 mb-2">Bounced contacts — you can clear or reclassify them:</p>
+                      <div className="space-y-1 max-h-64 overflow-y-auto">
+                        {bounceContacts.map(c => (
+                          <div key={c.id} className="flex items-center justify-between text-xs bg-gray-700/50 rounded px-3 py-1.5">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className={`font-bold shrink-0 ${c.bounceType === 'hard' ? 'text-red-400' : 'text-yellow-400'}`}>
+                                {c.bounceType === 'hard' ? 'HARD' : 'SOFT'}
+                              </span>
+                              <span className="text-gray-200 truncate">{c.email}</span>
+                              {c.name && <span className="text-gray-400 truncate">{c.name}</span>}
+                            </div>
+                            <div className="flex gap-1 shrink-0 ml-2">
+                              {c.bounceType !== 'soft' && (
+                                <button onClick={() => handleSetBounce(c.id, 'soft')} className="text-yellow-400 hover:text-yellow-300 px-1.5 py-0.5 border border-yellow-800 rounded">→ Soft</button>
+                              )}
+                              {c.bounceType !== 'hard' && (
+                                <button onClick={() => handleSetBounce(c.id, 'hard')} className="text-red-400 hover:text-red-300 px-1.5 py-0.5 border border-red-800 rounded">→ Hard</button>
+                              )}
+                              <button onClick={() => handleClearBounce(c.id)} className="text-gray-400 hover:text-white px-1.5 py-0.5 border border-gray-600 rounded">Clear</button>
+                            </div>
+                          </div>
+                        ))}
+                        {bounceContacts.length === 0 && <p className="text-gray-500 text-xs">No bounces recorded.</p>}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <button
-                  onClick={() => handleDelete(list.id, list.name)}
-                  className="text-red-400 hover:text-red-300 text-xs px-3 py-1 border border-red-800 rounded"
-                >
-                  Delete
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -482,8 +589,9 @@ We have exciting news to share with you...
 function CampaignsTab() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sendStats, setSendStats] = useState<Record<string, { pending: number; sent: number; failed: number }>>({});
+  const [sendStats, setSendStats] = useState<Record<string, { pending: number; sent: number; failed: number; softBounce: number; hardBounce: number }>>({});
   const [acting, setActing] = useState<string | null>(null);
+  const [includeSoftBounces, setIncludeSoftBounces] = useState<Record<string, boolean>>({});
 
   const load = () => {
     setLoading(true);
@@ -517,7 +625,7 @@ function CampaignsTab() {
     await fetch('/api/admin/mailings/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ campaignId, action }),
+      body: JSON.stringify({ campaignId, action, includeSoftBounces: includeSoftBounces[campaignId] ?? false }),
     });
     setActing(null);
     load();
@@ -571,10 +679,12 @@ function CampaignsTab() {
                       {' · '}{c.sendRatePerMinute}/min
                     </p>
                     {(stats || c.status === 'completed') && (
-                      <div className="mt-2 flex gap-4 text-xs">
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
                         <span className="text-green-400">✓ {stats?.sent ?? c.totalSent} sent</span>
                         {stats?.pending ? <span className="text-gray-400">{stats.pending} pending</span> : null}
-                        {stats?.failed ? <span className="text-red-400">{stats.failed} failed</span> : null}
+                        {stats?.hardBounce ? <span className="text-red-400">{stats.hardBounce} hard bounce{stats.hardBounce !== 1 ? 's' : ''}</span> : null}
+                        {stats?.softBounce ? <span className="text-yellow-400">{stats.softBounce} soft bounce{stats.softBounce !== 1 ? 's' : ''}</span> : null}
+                        {stats?.failed && !stats?.hardBounce && !stats?.softBounce ? <span className="text-red-400">{stats.failed} failed</span> : null}
                         {total > 0 && <span className="text-gray-500">/ {total} total</span>}
                       </div>
                     )}
@@ -588,15 +698,26 @@ function CampaignsTab() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-col items-end gap-2 shrink-0">
                     {c.status === 'draft' && (
-                      <button
-                        onClick={() => handleAction(c.id, 'start')}
-                        disabled={acting === c.id}
-                        className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded"
-                      >
-                        Send
-                      </button>
+                      <div className="flex flex-col items-end gap-1.5">
+                        <label className="flex items-center gap-1.5 text-xs text-yellow-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={includeSoftBounces[c.id] ?? false}
+                            onChange={e => setIncludeSoftBounces(prev => ({ ...prev, [c.id]: e.target.checked }))}
+                            className="accent-yellow-400"
+                          />
+                          Include soft bounces
+                        </label>
+                        <button
+                          onClick={() => handleAction(c.id, 'start')}
+                          disabled={acting === c.id}
+                          className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded"
+                        >
+                          Send
+                        </button>
+                      </div>
                     )}
                     {c.status === 'sending' && (
                       <button
