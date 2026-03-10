@@ -63,6 +63,22 @@ export default function MailingsPage() {
   );
 }
 
+// ── CSV helper (client-side) ─────────────────────────────────────────────────
+
+function splitCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuotes = !inQuotes; }
+    else if (ch === ',' && !inQuotes) { result.push(current); current = ''; }
+    else { current += ch; }
+  }
+  result.push(current);
+  return result;
+}
+
 // ── Lists Tab ────────────────────────────────────────────────────────────────
 
 function ListsTab() {
@@ -73,6 +89,7 @@ function ListsTab() {
   const [description, setDescription] = useState('');
   const [uploading, setUploading] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [csvPreview, setCsvPreview] = useState<{ headers: string[]; rows: string[][] } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = () => {
@@ -89,6 +106,20 @@ function ListsTab() {
   };
 
   useEffect(load, []);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) { setCsvPreview(null); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(l => l.trim()).slice(0, 6); // header + 5 rows
+      if (lines.length === 0) { setCsvPreview(null); return; }
+      const parsed = lines.map(l => splitCsvLine(l).map(c => c.trim().replace(/^"|"$/g, '')));
+      setCsvPreview({ headers: parsed[0], rows: parsed.slice(1) });
+    };
+    reader.readAsText(file);
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -120,6 +151,7 @@ function ListsTab() {
 
       setName('');
       setDescription('');
+      setCsvPreview(null);
       if (fileRef.current) fileRef.current.value = '';
       load();
     } catch (err) {
@@ -169,8 +201,34 @@ function ListsTab() {
               ref={fileRef}
               type="file"
               accept=".csv,text/csv"
+              onChange={handleFileChange}
               className="w-full text-sm text-gray-300 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-gray-600 file:text-white file:text-sm"
             />
+            {csvPreview && (
+              <div className="mt-2">
+                <p className="text-xs text-gray-400 mb-1">Preview (first {csvPreview.rows.length} row{csvPreview.rows.length !== 1 ? 's' : ''}):</p>
+                <div className="overflow-x-auto rounded border border-gray-600">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-gray-700 text-gray-300">
+                        {csvPreview.headers.map((h, i) => (
+                          <th key={i} className="text-left px-3 py-1.5 font-medium">{h || <span className="text-gray-500 italic">col {i + 1}</span>}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvPreview.rows.map((row, ri) => (
+                        <tr key={ri} className="border-t border-gray-700 odd:bg-gray-800 even:bg-gray-750">
+                          {csvPreview.headers.map((_, ci) => (
+                            <td key={ci} className="px-3 py-1.5 text-gray-200 truncate max-w-[200px]">{row[ci] ?? ''}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
           <button
             type="submit"
