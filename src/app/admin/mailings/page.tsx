@@ -796,6 +796,7 @@ function CampaignsTab() {
   const [loading, setLoading] = useState(true);
   const [sendStats, setSendStats] = useState<Record<string, { pending: number; sent: number; failed: number; softBounce: number; hardBounce: number }>>({});
   const [acting, setActing] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [includeSoftBounces, setIncludeSoftBounces] = useState<Record<string, boolean>>({});
 
   // Edit state
@@ -848,11 +849,16 @@ function CampaignsTab() {
 
   async function handleAction(campaignId: string, action: 'start' | 'pause' | 'resume') {
     setActing(campaignId);
-    await fetch('/api/admin/mailings/send', {
+    setActionError(null);
+    const res = await fetch('/api/admin/mailings/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ campaignId, action, includeSoftBounces: includeSoftBounces[campaignId] ?? false }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setActionError(d.error ?? `Failed (HTTP ${res.status})`);
+    }
     setActing(null);
     load();
   }
@@ -939,6 +945,12 @@ function CampaignsTab() {
           Refresh
         </button>
       </div>
+
+      {actionError && (
+        <div className="bg-red-900/40 border border-red-700 rounded-lg px-4 py-3 text-sm text-red-300">
+          {actionError}
+        </div>
+      )}
 
       {loading ? (
         <p className="text-gray-400 text-sm animate-pulse">Loading…</p>

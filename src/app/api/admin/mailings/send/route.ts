@@ -65,6 +65,13 @@ export async function POST(req: NextRequest) {
   }
 
   if (action === 'start' || action === 'resume') {
+    if (!smtpConfigured()) {
+      return NextResponse.json(
+        { error: 'SMTP not configured — set SMTP_HOST, SMTP_USER, and SMTP_PASS in environment variables' },
+        { status: 400 }
+      );
+    }
+
     if (action === 'start') {
       await prisma.emailSend.deleteMany({ where: { campaignId } });
 
@@ -137,7 +144,14 @@ function classifyBounce(err: unknown): 'hard' | 'soft' {
 // ── Send loop ─────────────────────────────────────────────────────────────────
 
 async function sendCampaign(campaignId: string) {
-  const transporter = createTransporter();
+  let transporter: ReturnType<typeof createTransporter>;
+  try {
+    transporter = createTransporter();
+  } catch (err) {
+    console.error('sendCampaign: SMTP not configured, pausing campaign', campaignId, err);
+    await prisma.emailCampaign.update({ where: { id: campaignId }, data: { status: 'paused' } });
+    return;
+  }
 
   while (true) {
     const campaign = await prisma.emailCampaign.findUnique({ where: { id: campaignId } });
@@ -232,15 +246,20 @@ function createTransporter() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
 
-  if (host && user && pass) {
-    return nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: { user, pass },
-    });
+  if (!host || !user || !pass) {
+    throw new Error('SMTP not configured — set SMTP_HOST, SMTP_USER, and SMTP_PASS environment variables');
   }
-  return nodemailer.createTransport({ sendmail: true });
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+  });
+}
+
+function smtpConfigured(): boolean {
+  return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
 function sleep(ms: number) {
