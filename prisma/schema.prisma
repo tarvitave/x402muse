@@ -106,6 +106,7 @@ model MailingListContact {
 
 model EmailCampaign {
   id                 String      @id @default(uuid())
+  name               String?
   mailingListId      String
   subject            String
   bodyMarkdown       String

@@ -24,13 +24,14 @@ export async function GET(req: NextRequest) {
 // POST /api/admin/mailings/campaigns — create campaign
 export async function POST(req: NextRequest) {
   try {
-    const { mailingListId, subject, bodyMarkdown, fromName, fromEmail, sendRatePerMinute } = await req.json();
+    const { mailingListId, subject, bodyMarkdown, fromName, fromEmail, sendRatePerMinute, name } = await req.json();
     if (!mailingListId || !subject || !bodyMarkdown || !fromEmail) {
       return NextResponse.json({ error: 'mailingListId, subject, bodyMarkdown, fromEmail required' }, { status: 400 });
     }
     const campaign = await prisma.emailCampaign.create({
       data: {
         id: randomUUID(),
+        name: name ?? null,
         mailingListId,
         subject,
         bodyMarkdown,
@@ -53,10 +54,17 @@ export async function PATCH(req: NextRequest) {
     const id = new URL(req.url).searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
     const data = await req.json();
-    const allowed = ['subject', 'bodyMarkdown', 'fromName', 'fromEmail', 'sendRatePerMinute', 'status'];
+    const existing = await prisma.emailCampaign.findUnique({ where: { id }, select: { status: true } });
+    if (!existing) return NextResponse.json({ error: 'not found' }, { status: 404 });
+
+    const allowed = ['name', 'subject', 'bodyMarkdown', 'fromName', 'fromEmail', 'sendRatePerMinute', 'mailingListId', 'status'];
+    const contentFields = new Set(['name', 'subject', 'bodyMarkdown', 'fromName', 'fromEmail', 'sendRatePerMinute', 'mailingListId']);
     const update: Record<string, unknown> = {};
     for (const k of allowed) {
-      if (k in data) update[k] = data[k];
+      if (!(k in data)) continue;
+      // Block content edits if campaign is already sending/completed
+      if (contentFields.has(k) && !['draft', 'paused'].includes(existing.status)) continue;
+      update[k] = data[k];
     }
     const campaign = await prisma.emailCampaign.update({ where: { id }, data: update });
     return NextResponse.json({ campaign });

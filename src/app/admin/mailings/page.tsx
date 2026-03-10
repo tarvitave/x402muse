@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import AdminNav from '@/components/AdminNav';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -27,10 +27,12 @@ interface Contact {
   name: string | null;
   bounceType: string | null;
   bouncedAt: string | null;
+  unsubscribed: boolean;
 }
 
 interface Campaign {
   id: string;
+  name: string | null;
   mailingListId: string;
   subject: string;
   bodyMarkdown: string;
@@ -44,10 +46,19 @@ interface Campaign {
   _count: { sends: number };
 }
 
+// ── Shared status colours (used in Campaigns + Analytics tabs) ───────────────
+
+const statusColor: Record<string, string> = {
+  draft: 'text-gray-400',
+  sending: 'text-blue-400',
+  paused: 'text-yellow-400',
+  completed: 'text-green-400',
+};
+
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function MailingsPage() {
-  const [tab, setTab] = useState<'lists' | 'compose' | 'campaigns'>('lists');
+  const [tab, setTab] = useState<'lists' | 'compose' | 'campaigns' | 'analytics'>('lists');
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
@@ -56,7 +67,7 @@ export default function MailingsPage() {
         <h1 className="text-2xl font-bold mb-6">Mailings</h1>
 
         <div className="flex gap-2 mb-6 border-b border-gray-700 pb-0">
-          {(['lists', 'compose', 'campaigns'] as const).map(t => (
+          {(['lists', 'compose', 'campaigns', 'analytics'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -74,6 +85,7 @@ export default function MailingsPage() {
         {tab === 'lists' && <ListsTab />}
         {tab === 'compose' && <ComposeTab />}
         {tab === 'campaigns' && <CampaignsTab />}
+        {tab === 'analytics' && <AnalyticsTab />}
       </div>
     </div>
   );
@@ -111,7 +123,22 @@ function ListsTab() {
   const [bounceContacts, setBounceContacts] = useState<Contact[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const load = () => {
+  // Edit list state
+  const [editingList, setEditingList] = useState<MailingList | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Contacts panel state
+  const [contactsListId, setContactsListId] = useState<string | null>(null);
+  const [allContacts, setAllContacts] = useState<Contact[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [addEmail, setAddEmail] = useState('');
+  const [addContactName, setAddContactName] = useState('');
+  const [addingContact, setAddingContact] = useState(false);
+  const [addContactError, setAddContactError] = useState('');
+
+  const load = useCallback(() => {
     setLoading(true);
     setLoadError('');
     fetch('/api/admin/mailings/lists')
@@ -120,10 +147,9 @@ function ListsTab() {
         return r.json();
       })
       .then(d => {
-        const lists: MailingList[] = d.lists ?? [];
-        setLists(lists);
-        // Load bounce summaries for each list
-        lists.forEach(list => {
+        const ls: MailingList[] = d.lists ?? [];
+        setLists(ls);
+        ls.forEach(list => {
           fetch(`/api/admin/mailings/contacts?listId=${list.id}`)
             .then(r => r.json())
             .then(data => setBounceSummaries(prev => ({ ...prev, [list.id]: data.summary })))
@@ -132,9 +158,9 @@ function ListsTab() {
       })
       .catch(err => setLoadError(String(err)))
       .finally(() => setLoading(false));
-  };
+  }, []);
 
-  useEffect(load, []);
+  useEffect(load, [load]);
 
   async function handleViewBounces(listId: string) {
     if (expandedBounces === listId) { setExpandedBounces(null); return; }
@@ -170,7 +196,7 @@ function ListsTab() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      const lines = text.split(/\r?\n/).filter(l => l.trim()).slice(0, 6); // header + 5 rows
+      const lines = text.split(/\r?\n/).filter(l => l.trim()).slice(0, 6);
       if (lines.length === 0) { setCsvPreview(null); return; }
       const parsed = lines.map(l => splitCsvLine(l).map(c => c.trim().replace(/^"|"$/g, '')));
       setCsvPreview({ headers: parsed[0], rows: parsed.slice(1) });
@@ -183,7 +209,6 @@ function ListsTab() {
     if (!name.trim()) return;
     setUploading(true);
     setCreateError('');
-
     try {
       const file = fileRef.current?.files?.[0];
       let res: Response;
@@ -200,12 +225,10 @@ function ListsTab() {
           body: JSON.stringify({ name, description }),
         });
       }
-
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? `HTTP ${res.status}`);
       }
-
       setName('');
       setDescription('');
       setCsvPreview(null);
@@ -224,8 +247,112 @@ function ListsTab() {
     load();
   }
 
+  function openEdit(list: MailingList) {
+    setEditingList(list);
+    setEditName(list.name);
+    setEditDesc(list.description ?? '');
+  }
+
+  async function handleEditSave() {
+    if (!editingList) return;
+    setEditSaving(true);
+    await fetch(`/api/admin/mailings/lists?id=${editingList.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: editName, description: editDesc }),
+    });
+    setEditSaving(false);
+    setEditingList(null);
+    load();
+  }
+
+  async function openContacts(listId: string) {
+    if (contactsListId === listId) { setContactsListId(null); return; }
+    setContactsListId(listId);
+    setExpandedBounces(null);
+    setContactsLoading(true);
+    const res = await fetch(`/api/admin/mailings/contacts?listId=${listId}`);
+    const data = await res.json();
+    setAllContacts(data.contacts ?? []);
+    setContactsLoading(false);
+  }
+
+  async function handleAddContact() {
+    if (!contactsListId || !addEmail) return;
+    setAddingContact(true);
+    setAddContactError('');
+    const res = await fetch('/api/admin/mailings/lists', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'addContact', listId: contactsListId, email: addEmail, name: addContactName }),
+    });
+    if (res.ok) {
+      setAddEmail('');
+      setAddContactName('');
+      const r2 = await fetch(`/api/admin/mailings/contacts?listId=${contactsListId}`);
+      const d2 = await r2.json();
+      setAllContacts(d2.contacts ?? []);
+      load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setAddContactError(d.error ?? 'Failed to add contact');
+    }
+    setAddingContact(false);
+  }
+
+  async function handleDeleteContact(contactId: string) {
+    await fetch('/api/admin/mailings/lists', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'deleteContact', contactId }),
+    });
+    setAllContacts(prev => prev.filter(c => c.id !== contactId));
+    load();
+  }
+
   return (
     <div className="space-y-6">
+      {/* Edit List Modal */}
+      {editingList && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-md space-y-4">
+            <h3 className="text-lg font-semibold">Edit List</h3>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Name *</label>
+              <input
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Description</label>
+              <input
+                value={editDesc}
+                onChange={e => setEditDesc(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setEditingList(null)}
+                className="text-gray-400 hover:text-white text-sm px-4 py-2 border border-gray-600 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditSave}
+                disabled={editSaving || !editName.trim()}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm px-4 py-2 rounded"
+              >
+                {editSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create List Form */}
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-5">
         <h2 className="text-lg font-semibold mb-4">Create Mailing List</h2>
         <form onSubmit={handleCreate} className="space-y-3">
@@ -294,12 +421,11 @@ function ListsTab() {
           >
             {uploading ? 'Creating…' : 'Create List'}
           </button>
-          {createError && (
-            <p className="text-red-400 text-sm mt-2">Error: {createError}</p>
-          )}
+          {createError && <p className="text-red-400 text-sm mt-2">Error: {createError}</p>}
         </form>
       </div>
 
+      {/* Lists */}
       <div>
         <h2 className="text-lg font-semibold mb-3">Your Lists</h2>
         {loadError && <p className="text-red-400 text-sm mb-2">Failed to load: {loadError}</p>}
@@ -311,7 +437,8 @@ function ListsTab() {
           <div className="space-y-3">
             {lists.map(list => {
               const bs = bounceSummaries[list.id];
-              const isExpanded = expandedBounces === list.id;
+              const isBouncesExpanded = expandedBounces === list.id;
+              const isContactsExpanded = contactsListId === list.id;
               return (
                 <div key={list.id} className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
                   <div className="p-4 flex items-center justify-between">
@@ -329,13 +456,25 @@ function ListsTab() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                    <div className="flex items-center gap-2 shrink-0 ml-3 flex-wrap justify-end">
+                      <button
+                        onClick={() => openEdit(list)}
+                        className="text-xs text-blue-400 hover:text-blue-300 border border-blue-800 rounded px-2 py-1"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => openContacts(list.id)}
+                        className={`text-xs border rounded px-2 py-1 ${isContactsExpanded ? 'text-purple-300 border-purple-600' : 'text-purple-400 hover:text-purple-300 border-purple-800'}`}
+                      >
+                        {isContactsExpanded ? 'Hide Contacts' : 'Contacts'}
+                      </button>
                       {bs && (bs.soft > 0 || bs.hard > 0) && (
                         <button
                           onClick={() => handleViewBounces(list.id)}
                           className="text-xs text-yellow-400 hover:text-yellow-300 border border-yellow-700 rounded px-2 py-1"
                         >
-                          {isExpanded ? 'Hide' : 'Bounces'}
+                          {isBouncesExpanded ? 'Hide Bounces' : 'Bounces'}
                         </button>
                       )}
                       <button
@@ -347,9 +486,68 @@ function ListsTab() {
                     </div>
                   </div>
 
-                  {isExpanded && (
+                  {/* Contacts Panel */}
+                  {isContactsExpanded && (
                     <div className="border-t border-gray-700 px-4 pb-4">
-                      <p className="text-xs text-gray-400 mt-3 mb-2">Bounced contacts — you can clear or reclassify them:</p>
+                      <p className="text-xs text-gray-400 mt-3 mb-2">Manage contacts:</p>
+                      <div className="flex gap-2 mb-3">
+                        <input
+                          value={addEmail}
+                          onChange={e => setAddEmail(e.target.value)}
+                          placeholder="email@example.com"
+                          type="email"
+                          className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs"
+                          onKeyDown={e => { if (e.key === 'Enter') handleAddContact(); }}
+                        />
+                        <input
+                          value={addContactName}
+                          onChange={e => setAddContactName(e.target.value)}
+                          placeholder="Name (optional)"
+                          className="w-40 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs"
+                        />
+                        <button
+                          onClick={handleAddContact}
+                          disabled={addingContact || !addEmail.includes('@')}
+                          className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs px-3 py-1.5 rounded"
+                        >
+                          {addingContact ? '…' : 'Add'}
+                        </button>
+                      </div>
+                      {addContactError && <p className="text-red-400 text-xs mb-2">{addContactError}</p>}
+                      {contactsLoading ? (
+                        <p className="text-gray-500 text-xs animate-pulse">Loading…</p>
+                      ) : (
+                        <div className="space-y-1 max-h-72 overflow-y-auto">
+                          {allContacts.map(c => (
+                            <div key={c.id} className="flex items-center justify-between text-xs bg-gray-700/50 rounded px-3 py-1.5">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-gray-200 truncate">{c.email}</span>
+                                {c.name && <span className="text-gray-400 truncate">{c.name}</span>}
+                                {c.bounceType && (
+                                  <span className={`font-bold shrink-0 ${c.bounceType === 'hard' ? 'text-red-400' : 'text-yellow-400'}`}>
+                                    {c.bounceType}
+                                  </span>
+                                )}
+                                {c.unsubscribed && <span className="text-gray-500 shrink-0">unsub</span>}
+                              </div>
+                              <button
+                                onClick={() => handleDeleteContact(c.id)}
+                                className="text-red-400 hover:text-red-300 ml-2 shrink-0 px-1"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                          {allContacts.length === 0 && <p className="text-gray-500 text-xs">No contacts yet.</p>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Bounces Panel */}
+                  {isBouncesExpanded && (
+                    <div className="border-t border-gray-700 px-4 pb-4">
+                      <p className="text-xs text-gray-400 mt-3 mb-2">Bounced contacts — clear or reclassify:</p>
                       <div className="space-y-1 max-h-64 overflow-y-auto">
                         {bounceContacts.map(c => (
                           <div key={c.id} className="flex items-center justify-between text-xs bg-gray-700/50 rounded px-3 py-1.5">
@@ -390,6 +588,7 @@ function ListsTab() {
 function ComposeTab() {
   const [lists, setLists] = useState<MailingList[]>([]);
   const [selectedList, setSelectedList] = useState('');
+  const [draftName, setDraftName] = useState('');
   const [subject, setSubject] = useState('');
   const [fromName, setFromName] = useState('');
   const [fromEmail, setFromEmail] = useState('');
@@ -430,11 +629,8 @@ function ComposeTab() {
         body: JSON.stringify({ prompt: aiPrompt, subject }),
       });
       const data = await res.json();
-      if (data.error) {
-        setAiError(data.error);
-      } else {
-        setBody(data.markdown);
-      }
+      if (data.error) setAiError(data.error);
+      else setBody(data.markdown);
     } finally {
       setAiLoading(false);
     }
@@ -446,7 +642,15 @@ function ComposeTab() {
     const res = await fetch('/api/admin/mailings/campaigns', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mailingListId: selectedList, subject, bodyMarkdown: body, fromName, fromEmail, sendRatePerMinute: rate }),
+      body: JSON.stringify({
+        mailingListId: selectedList,
+        name: draftName || undefined,
+        subject,
+        bodyMarkdown: body,
+        fromName,
+        fromEmail,
+        sendRatePerMinute: rate,
+      }),
     });
     setSaving(false);
     if (res.ok) {
@@ -459,6 +663,16 @@ function ComposeTab() {
     <div className="space-y-5">
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 space-y-4">
         <h2 className="text-lg font-semibold">Compose Email</h2>
+
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Draft Name <span className="text-gray-500">(optional label to identify this draft)</span></label>
+          <input
+            value={draftName}
+            onChange={e => setDraftName(e.target.value)}
+            placeholder="e.g. March Newsletter v2"
+            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+          />
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -476,7 +690,7 @@ function ComposeTab() {
             <input
               value={subject}
               onChange={e => setSubject(e.target.value)}
-              placeholder="Email subject"
+              placeholder="Email subject line"
               className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
             />
           </div>
@@ -520,7 +734,7 @@ function ComposeTab() {
           <input
             value={aiPrompt}
             onChange={e => setAiPrompt(e.target.value)}
-            placeholder="Describe the email you want... e.g. 'Announce the weekly art contest winner and invite people to play'"
+            placeholder="Describe the email you want…"
             className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
             onKeyDown={e => { if (e.key === 'Enter') handleAiGenerate(); }}
           />
@@ -533,7 +747,7 @@ function ComposeTab() {
           </button>
         </div>
         {aiError && <p className="text-red-400 text-xs">{aiError}</p>}
-        <p className="text-xs text-gray-500">Requires ANTHROPIC_API_KEY env var. Generated content replaces the email body below.</p>
+        <p className="text-xs text-gray-500">Requires ANTHROPIC_API_KEY. Generated content replaces the email body below.</p>
       </div>
 
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 space-y-3">
@@ -546,7 +760,6 @@ function ComposeTab() {
             {preview ? 'Edit' : 'Preview'}
           </button>
         </div>
-
         {preview ? (
           <div
             className="prose prose-invert prose-sm max-w-none bg-white text-gray-900 rounded p-4 min-h-[300px]"
@@ -556,18 +769,7 @@ function ComposeTab() {
           <textarea
             value={body}
             onChange={e => setBody(e.target.value)}
-            placeholder="Write your email in Markdown...
-
-# Hello {name}
-
-We have exciting news to share with you...
-
-## What's New
-
-- Feature 1
-- Feature 2
-
-[Click here to play](https://yoursite.com)"
+            placeholder="Write your email in Markdown…"
             rows={16}
             className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm font-mono resize-y"
           />
@@ -590,37 +792,53 @@ We have exciting news to share with you...
 
 function CampaignsTab() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [lists, setLists] = useState<MailingList[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendStats, setSendStats] = useState<Record<string, { pending: number; sent: number; failed: number; softBounce: number; hardBounce: number }>>({});
   const [acting, setActing] = useState<string | null>(null);
   const [includeSoftBounces, setIncludeSoftBounces] = useState<Record<string, boolean>>({});
 
-  const load = () => {
-    setLoading(true);
-    fetch('/api/admin/mailings/campaigns')
-      .then(r => r.json())
-      .then(d => setCampaigns(d.campaigns ?? []))
-      .finally(() => setLoading(false));
-  };
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFields, setEditFields] = useState<Partial<Campaign> & { bodyMarkdown?: string }>({});
+  const [editSaving, setEditSaving] = useState(false);
+  const [editPreview, setEditPreview] = useState(false);
+  const [editPreviewHtml, setEditPreviewHtml] = useState('');
 
-  useEffect(load, []);
+  const load = useCallback(() => {
+    setLoading(true);
+    Promise.all([
+      fetch('/api/admin/mailings/campaigns').then(r => r.json()),
+      fetch('/api/admin/mailings/lists').then(r => r.json()),
+    ]).then(([cd, ld]) => {
+      setCampaigns(cd.campaigns ?? []);
+      setLists(ld.lists ?? []);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(load, [load]);
 
   useEffect(() => {
-    // Load stats for sending/paused campaigns
-    campaigns.filter(c => c.status === 'sending' || c.status === 'paused' || c.status === 'completed').forEach(c => {
+    campaigns.filter(c => ['sending', 'paused', 'completed'].includes(c.status)).forEach(c => {
       fetch(`/api/admin/mailings/send?campaignId=${c.id}`)
         .then(r => r.json())
         .then(d => setSendStats(prev => ({ ...prev, [c.id]: d.stats })));
     });
   }, [campaigns]);
 
-  // Auto-refresh sending campaigns
   useEffect(() => {
     const sending = campaigns.some(c => c.status === 'sending');
     if (!sending) return;
     const t = setInterval(load, 5000);
     return () => clearInterval(t);
-  }, [campaigns]);
+  }, [campaigns, load]);
+
+  useEffect(() => {
+    if (!editPreview || !editFields.bodyMarkdown) return;
+    import('marked').then(({ marked }) => {
+      Promise.resolve(marked.parse(editFields.bodyMarkdown ?? '')).then(html => setEditPreviewHtml(html));
+    });
+  }, [editPreview, editFields.bodyMarkdown]);
 
   async function handleAction(campaignId: string, action: 'start' | 'pause' | 'resume') {
     setActing(campaignId);
@@ -639,12 +857,31 @@ function CampaignsTab() {
     load();
   }
 
-  const statusColor: Record<string, string> = {
-    draft: 'text-gray-400',
-    sending: 'text-blue-400',
-    paused: 'text-yellow-400',
-    completed: 'text-green-400',
-  };
+  function startEdit(c: Campaign) {
+    setEditingId(c.id);
+    setEditPreview(false);
+    setEditFields({
+      name: c.name,
+      subject: c.subject,
+      bodyMarkdown: c.bodyMarkdown,
+      fromName: c.fromName,
+      fromEmail: c.fromEmail,
+      sendRatePerMinute: c.sendRatePerMinute,
+      mailingListId: c.mailingListId,
+    });
+  }
+
+  async function handleEditSave(id: string) {
+    setEditSaving(true);
+    await fetch(`/api/admin/mailings/campaigns?id=${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editFields),
+    });
+    setEditSaving(false);
+    setEditingId(null);
+    load();
+  }
 
   return (
     <div className="space-y-4">
@@ -664,17 +901,127 @@ function CampaignsTab() {
           {campaigns.map(c => {
             const stats = sendStats[c.id];
             const total = c._count.sends;
+            const isEditing = editingId === c.id;
+            const canEdit = c.status === 'draft' || c.status === 'paused';
+
+            if (isEditing) {
+              return (
+                <div key={c.id} className="bg-gray-800 border border-blue-700 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-blue-400">Editing Campaign</h3>
+                    <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-white text-xs">Cancel</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <label className="block text-xs text-gray-400 mb-1">Draft Name <span className="text-gray-500">(optional label)</span></label>
+                      <input
+                        value={editFields.name ?? ''}
+                        onChange={e => setEditFields(p => ({ ...p, name: e.target.value || null }))}
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Mailing List</label>
+                      <select
+                        value={editFields.mailingListId ?? ''}
+                        onChange={e => setEditFields(p => ({ ...p, mailingListId: e.target.value }))}
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm"
+                      >
+                        {lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Subject</label>
+                      <input
+                        value={editFields.subject ?? ''}
+                        onChange={e => setEditFields(p => ({ ...p, subject: e.target.value }))}
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">From Name</label>
+                      <input
+                        value={editFields.fromName ?? ''}
+                        onChange={e => setEditFields(p => ({ ...p, fromName: e.target.value }))}
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">From Email</label>
+                      <input
+                        value={editFields.fromEmail ?? ''}
+                        onChange={e => setEditFields(p => ({ ...p, fromEmail: e.target.value }))}
+                        type="email"
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Send Rate (emails/min)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={500}
+                        value={editFields.sendRatePerMinute ?? 60}
+                        onChange={e => setEditFields(p => ({ ...p, sendRatePerMinute: parseInt(e.target.value) || 60 }))}
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs text-gray-400">Body (Markdown)</label>
+                      <button
+                        onClick={() => setEditPreview(!editPreview)}
+                        className="text-xs text-purple-400 hover:text-purple-300 border border-purple-700 rounded px-2 py-0.5"
+                      >
+                        {editPreview ? 'Edit' : 'Preview'}
+                      </button>
+                    </div>
+                    {editPreview ? (
+                      <div
+                        className="prose prose-invert prose-sm max-w-none bg-white text-gray-900 rounded p-3 min-h-[200px] text-sm"
+                        dangerouslySetInnerHTML={{ __html: editPreviewHtml }}
+                      />
+                    ) : (
+                      <textarea
+                        value={editFields.bodyMarkdown ?? ''}
+                        onChange={e => setEditFields(p => ({ ...p, bodyMarkdown: e.target.value }))}
+                        rows={10}
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-xs font-mono resize-y"
+                      />
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEditSave(c.id)}
+                      disabled={editSaving}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded"
+                    >
+                      {editSaving ? 'Saving…' : 'Save Changes'}
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="text-gray-400 hover:text-white text-sm px-4 py-2 border border-gray-600 rounded"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div key={c.id} className="bg-gray-800 border border-gray-700 rounded-lg p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className={`text-xs font-bold uppercase ${statusColor[c.status] ?? 'text-gray-400'}`}>
                         {c.status}
                       </span>
                       <span className="text-xs text-gray-500">·</span>
                       <span className="text-xs text-gray-400">{c.mailingList.name}</span>
                     </div>
+                    {c.name && <p className="text-xs text-purple-400 italic mb-0.5">{c.name}</p>}
                     <p className="font-semibold truncate">{c.subject}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
                       From: {c.fromName ? `${c.fromName} <${c.fromEmail}>` : c.fromEmail}
@@ -739,6 +1086,14 @@ function CampaignsTab() {
                         Resume
                       </button>
                     )}
+                    {canEdit && (
+                      <button
+                        onClick={() => startEdit(c)}
+                        className="text-xs text-blue-400 hover:text-blue-300 border border-blue-800 rounded px-2 py-1.5"
+                      >
+                        Edit
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDelete(c.id, c.subject)}
                       className="text-red-400 hover:text-red-300 text-xs px-2 py-1.5 border border-red-800 rounded"
@@ -751,6 +1106,176 @@ function CampaignsTab() {
             );
           })}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── Analytics Tab ────────────────────────────────────────────────────────────
+
+interface DailyStat {
+  day: string;
+  sent: number;
+  failed: number;
+  softBounce: number;
+  hardBounce: number;
+}
+
+interface CampaignStat {
+  id: string;
+  name: string | null;
+  subject: string;
+  listName: string;
+  status: string;
+  sent: number;
+  failed: number;
+  softBounce: number;
+  hardBounce: number;
+  total: number;
+}
+
+function AnalyticsTab() {
+  const [days, setDays] = useState(30);
+  const [daily, setDaily] = useState<DailyStat[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignStat[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/admin/mailings/analytics?days=${days}`)
+      .then(r => r.json())
+      .then(d => {
+        setDaily(d.daily ?? []);
+        setCampaigns(d.campaigns ?? []);
+      })
+      .finally(() => setLoading(false));
+  }, [days]);
+
+  const totalSent = daily.reduce((s, r) => s + r.sent, 0);
+  const totalFailed = daily.reduce((s, r) => s + r.failed, 0);
+  const deliveryRate = totalSent + totalFailed === 0
+    ? null
+    : Math.round(totalSent / (totalSent + totalFailed) * 100);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Send Analytics</h2>
+        <select
+          value={days}
+          onChange={e => setDays(Number(e.target.value))}
+          className="bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm"
+        >
+          <option value={7}>Last 7 days</option>
+          <option value={30}>Last 30 days</option>
+          <option value={90}>Last 90 days</option>
+        </select>
+      </div>
+
+      {loading ? (
+        <p className="text-gray-400 text-sm animate-pulse">Loading…</p>
+      ) : (
+        <>
+          {/* Summary cards */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+              <p className="text-xs text-gray-400 mb-1">Sent ({days}d)</p>
+              <p className="text-2xl font-bold text-green-400">{totalSent.toLocaleString()}</p>
+            </div>
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+              <p className="text-xs text-gray-400 mb-1">Failed ({days}d)</p>
+              <p className="text-2xl font-bold text-red-400">{totalFailed.toLocaleString()}</p>
+            </div>
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+              <p className="text-xs text-gray-400 mb-1">Delivery rate</p>
+              <p className="text-2xl font-bold text-blue-400">{deliveryRate !== null ? `${deliveryRate}%` : '—'}</p>
+            </div>
+          </div>
+
+          {/* Daily breakdown */}
+          {daily.length > 0 ? (
+            <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-700">
+                <h3 className="text-sm font-semibold">Daily Breakdown</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-gray-700/50 text-gray-400">
+                      <th className="text-left px-4 py-2 font-medium">Date</th>
+                      <th className="text-right px-4 py-2 font-medium text-green-400">Sent</th>
+                      <th className="text-right px-4 py-2 font-medium text-red-400">Failed</th>
+                      <th className="text-right px-4 py-2 font-medium text-yellow-400">Soft Bounce</th>
+                      <th className="text-right px-4 py-2 font-medium text-red-400">Hard Bounce</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...daily].reverse().map(r => (
+                      <tr key={r.day} className="border-t border-gray-700 hover:bg-gray-700/30">
+                        <td className="px-4 py-2 text-gray-300">{r.day}</td>
+                        <td className="px-4 py-2 text-right text-green-400 font-medium">{r.sent.toLocaleString()}</td>
+                        <td className="px-4 py-2 text-right text-red-400">{r.failed || '—'}</td>
+                        <td className="px-4 py-2 text-right text-yellow-400">{r.softBounce || '—'}</td>
+                        <td className="px-4 py-2 text-right text-red-400">{r.hardBounce || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-800 border border-gray-700 rounded-xl p-8 text-center">
+              <p className="text-gray-500 text-sm">No send data for the selected period.</p>
+            </div>
+          )}
+
+          {/* Campaign summary */}
+          <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-700">
+              <h3 className="text-sm font-semibold">Campaign Summary</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-gray-700/50 text-gray-400">
+                    <th className="text-left px-4 py-2 font-medium">Campaign</th>
+                    <th className="text-left px-4 py-2 font-medium">List</th>
+                    <th className="text-left px-4 py-2 font-medium">Status</th>
+                    <th className="text-right px-4 py-2 font-medium text-green-400">Sent</th>
+                    <th className="text-right px-4 py-2 font-medium text-red-400">Failed</th>
+                    <th className="text-right px-4 py-2 font-medium text-yellow-400">Soft</th>
+                    <th className="text-right px-4 py-2 font-medium text-red-400">Hard</th>
+                    <th className="text-right px-4 py-2 font-medium text-gray-400">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {campaigns.map(c => (
+                    <tr key={c.id} className="border-t border-gray-700 hover:bg-gray-700/30">
+                      <td className="px-4 py-2 max-w-[220px]">
+                        {c.name && <span className="text-purple-400 italic block text-[10px]">{c.name}</span>}
+                        <span className="text-gray-200 truncate block">{c.subject}</span>
+                      </td>
+                      <td className="px-4 py-2 text-gray-400 max-w-[120px] truncate">{c.listName}</td>
+                      <td className="px-4 py-2">
+                        <span className={`font-semibold uppercase text-[10px] ${statusColor[c.status] ?? 'text-gray-400'}`}>{c.status}</span>
+                      </td>
+                      <td className="px-4 py-2 text-right text-green-400 font-medium">{c.sent || '—'}</td>
+                      <td className="px-4 py-2 text-right text-red-400">{c.failed || '—'}</td>
+                      <td className="px-4 py-2 text-right text-yellow-400">{c.softBounce || '—'}</td>
+                      <td className="px-4 py-2 text-right text-red-400">{c.hardBounce || '—'}</td>
+                      <td className="px-4 py-2 text-right text-gray-400">{c.total || '—'}</td>
+                    </tr>
+                  ))}
+                  {campaigns.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="px-4 py-6 text-gray-500 text-center">No campaigns yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

@@ -55,8 +55,32 @@ export async function POST(req: NextRequest) {
       const count = await prisma.mailingListContact.count({ where: { mailingListId: list.id } });
       return NextResponse.json({ list, contactCount: count });
     } else {
+      const body = await req.json();
+
+      if (body.action === 'addContact') {
+        const { listId, email, name: contactName } = body;
+        if (!listId || !email) return NextResponse.json({ error: 'listId and email required' }, { status: 400 });
+        const contact = await prisma.mailingListContact.create({
+          data: {
+            id: randomUUID(),
+            mailingListId: listId,
+            email,
+            name: contactName || undefined,
+            unsubscribeToken: randomUUID(),
+          },
+        });
+        return NextResponse.json({ contact });
+      }
+
+      if (body.action === 'deleteContact') {
+        const { contactId } = body;
+        if (!contactId) return NextResponse.json({ error: 'contactId required' }, { status: 400 });
+        await prisma.mailingListContact.delete({ where: { id: contactId } });
+        return NextResponse.json({ ok: true });
+      }
+
       // JSON: create empty list
-      const { name, description } = await req.json();
+      const { name, description } = body;
       if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 });
       const list = await prisma.mailingList.create({
         data: { id: randomUUID(), name, description: description ?? undefined },
@@ -65,6 +89,26 @@ export async function POST(req: NextRequest) {
     }
   } catch (err) {
     console.error('POST mailingList error:', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
+}
+
+// PATCH /api/admin/mailings/lists?id=xxx — update list name/description
+export async function PATCH(req: NextRequest) {
+  try {
+    const id = new URL(req.url).searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+    const { name, description } = await req.json();
+    const list = await prisma.mailingList.update({
+      where: { id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(description !== undefined && { description }),
+      },
+    });
+    return NextResponse.json({ list });
+  } catch (err) {
+    console.error('PATCH mailingList error:', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }

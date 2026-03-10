@@ -207,6 +207,12 @@ async function init() {
   await runSafe(prisma, 'EmailSend.bounceType migration', () =>
     prisma.$executeRawUnsafe(`ALTER TABLE "EmailSend" ADD COLUMN "bounceType" TEXT`)
   );
+  await runSafe(prisma, 'EmailCampaign.name migration', () =>
+    prisma.$executeRawUnsafe(`ALTER TABLE "EmailCampaign" ADD COLUMN "name" TEXT`)
+  );
+  await runSafe(prisma, 'EmailSend.idx_sentAt', () =>
+    prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmailSend_sentAt_idx" ON "EmailSend" ("sentAt")`)
+  );
   console.log('Mailing tables ready');
 
   // Migrate: update existing hints with old 0.01 cost to 0.00001
