@@ -92,7 +92,10 @@ export default function Leaderboard({ mode, refreshKey }: { mode?: string; refre
         {weeklyData && (
           <div className="mb-3">
             <p className="text-xs text-gray-400">
-              Week of {new Date(weeklyData.weekStart).toLocaleDateString()}
+              {(() => {
+                const end = new Date(new Date(weeklyData.weekStart).getTime() + 7 * 24 * 60 * 60 * 1000);
+                return `Competition ends ${end.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+              })()}
             </p>
             {weeklyData.prizePoolSol !== undefined && (
               <p className="text-sm text-yellow-400 font-semibold mt-1">
