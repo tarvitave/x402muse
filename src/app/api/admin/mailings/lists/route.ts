@@ -4,66 +4,81 @@ import { randomUUID } from 'crypto';
 
 // GET /api/admin/mailings/lists — list all mailing lists with contact counts
 export async function GET() {
-  const lists = await prisma.mailingList.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      _count: { select: { contacts: true, campaigns: true } },
-    },
-  });
-  return NextResponse.json({ lists });
+  try {
+    const lists = await prisma.mailingList.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: { select: { contacts: true, campaigns: true } },
+      },
+    });
+    return NextResponse.json({ lists });
+  } catch (err) {
+    console.error('GET mailingList error:', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
 
 // POST /api/admin/mailings/lists — create a new mailing list
 export async function POST(req: NextRequest) {
-  const contentType = req.headers.get('content-type') ?? '';
+  try {
+    const contentType = req.headers.get('content-type') ?? '';
 
-  if (contentType.includes('multipart/form-data')) {
-    // CSV upload
-    const formData = await req.formData();
-    const name = formData.get('name') as string;
-    const description = formData.get('description') as string | null;
-    const file = formData.get('file') as File | null;
+    if (contentType.includes('multipart/form-data')) {
+      // CSV upload
+      const formData = await req.formData();
+      const name = formData.get('name') as string;
+      const description = formData.get('description') as string | null;
+      const file = formData.get('file') as File | null;
 
-    if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 });
+      if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 });
 
-    const list = await prisma.mailingList.create({
-      data: { id: randomUUID(), name, description: description ?? undefined },
-    });
+      const list = await prisma.mailingList.create({
+        data: { id: randomUUID(), name, description: description ?? undefined },
+      });
 
-    if (file) {
-      const text = await file.text();
-      const contacts = parseCsv(text);
-      if (contacts.length > 0) {
-        await prisma.mailingListContact.createMany({
-          data: contacts.map(c => ({
-            id: randomUUID(),
-            mailingListId: list.id,
-            email: c.email,
-            name: c.name ?? undefined,
-          })),
-        });
+      if (file) {
+        const text = await file.text();
+        const contacts = parseCsv(text);
+        if (contacts.length > 0) {
+          await prisma.mailingListContact.createMany({
+            data: contacts.map(c => ({
+              id: randomUUID(),
+              mailingListId: list.id,
+              email: c.email,
+              name: c.name ?? undefined,
+            })),
+          });
+        }
       }
-    }
 
-    const count = await prisma.mailingListContact.count({ where: { mailingListId: list.id } });
-    return NextResponse.json({ list, contactCount: count });
-  } else {
-    // JSON: create empty list
-    const { name, description } = await req.json();
-    if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 });
-    const list = await prisma.mailingList.create({
-      data: { id: randomUUID(), name, description: description ?? undefined },
-    });
-    return NextResponse.json({ list });
+      const count = await prisma.mailingListContact.count({ where: { mailingListId: list.id } });
+      return NextResponse.json({ list, contactCount: count });
+    } else {
+      // JSON: create empty list
+      const { name, description } = await req.json();
+      if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 });
+      const list = await prisma.mailingList.create({
+        data: { id: randomUUID(), name, description: description ?? undefined },
+      });
+      return NextResponse.json({ list });
+    }
+  } catch (err) {
+    console.error('POST mailingList error:', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
 
 // DELETE /api/admin/mailings/lists?id=xxx
 export async function DELETE(req: NextRequest) {
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
-  await prisma.mailingList.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+  try {
+    const id = new URL(req.url).searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+    await prisma.mailingList.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE mailingList error:', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
 
 function parseCsv(text: string): { email: string; name?: string }[] {
