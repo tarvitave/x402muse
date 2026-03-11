@@ -1228,6 +1228,10 @@ interface DailyStat {
   failed: number;
   softBounce: number;
   hardBounce: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  complained: number;
 }
 
 interface CampaignStat {
@@ -1241,6 +1245,10 @@ interface CampaignStat {
   softBounce: number;
   hardBounce: number;
   total: number;
+  delivered: number;
+  opened: number;
+  clicked: number;
+  complained: number;
 }
 
 function AnalyticsTab() {
@@ -1262,9 +1270,14 @@ function AnalyticsTab() {
 
   const totalSent = daily.reduce((s, r) => s + r.sent, 0);
   const totalFailed = daily.reduce((s, r) => s + r.failed, 0);
-  const deliveryRate = totalSent + totalFailed === 0
-    ? null
-    : Math.round(totalSent / (totalSent + totalFailed) * 100);
+  const totalDelivered = daily.reduce((s, r) => s + r.delivered, 0);
+  const totalOpened = daily.reduce((s, r) => s + r.opened, 0);
+  const totalClicked = daily.reduce((s, r) => s + r.clicked, 0);
+  const totalComplained = daily.reduce((s, r) => s + r.complained, 0);
+  const deliveryRate = totalSent + totalFailed === 0 ? null : Math.round(totalSent / (totalSent + totalFailed) * 100);
+  const openRate = totalDelivered === 0 ? null : Math.round(totalOpened / totalDelivered * 100);
+  const clickRate = totalDelivered === 0 ? null : Math.round(totalClicked / totalDelivered * 100);
+  const hasSesData = totalDelivered > 0 || totalOpened > 0 || totalClicked > 0 || totalComplained > 0;
 
   return (
     <div className="space-y-6">
@@ -1296,10 +1309,36 @@ function AnalyticsTab() {
               <p className="text-2xl font-bold text-red-400">{totalFailed.toLocaleString()}</p>
             </div>
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-              <p className="text-xs text-gray-400 mb-1">Delivery rate</p>
+              <p className="text-xs text-gray-400 mb-1">Send success rate</p>
               <p className="text-2xl font-bold text-blue-400">{deliveryRate !== null ? `${deliveryRate}%` : '—'}</p>
             </div>
           </div>
+
+          {/* SES event cards — only shown when SNS events are flowing */}
+          {hasSesData && (
+            <div className="grid grid-cols-4 gap-3">
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <p className="text-xs text-gray-400 mb-1">Confirmed delivered</p>
+                <p className="text-2xl font-bold text-green-300">{totalDelivered.toLocaleString()}</p>
+              </div>
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <p className="text-xs text-gray-400 mb-1">Open rate</p>
+                <p className="text-2xl font-bold text-purple-400">{openRate !== null ? `${openRate}%` : '—'}</p>
+                <p className="text-[10px] text-gray-500">{totalOpened.toLocaleString()} opens</p>
+              </div>
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <p className="text-xs text-gray-400 mb-1">Click rate</p>
+                <p className="text-2xl font-bold text-cyan-400">{clickRate !== null ? `${clickRate}%` : '—'}</p>
+                <p className="text-[10px] text-gray-500">{totalClicked.toLocaleString()} clicks</p>
+              </div>
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <p className="text-xs text-gray-400 mb-1">Complaints</p>
+                <p className={`text-2xl font-bold ${totalComplained > 0 ? 'text-orange-400' : 'text-gray-500'}`}>
+                  {totalComplained.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Daily breakdown */}
           {daily.length > 0 ? (
@@ -1314,8 +1353,12 @@ function AnalyticsTab() {
                       <th className="text-left px-4 py-2 font-medium">Date</th>
                       <th className="text-right px-4 py-2 font-medium text-green-400">Sent</th>
                       <th className="text-right px-4 py-2 font-medium text-red-400">Failed</th>
-                      <th className="text-right px-4 py-2 font-medium text-yellow-400">Soft Bounce</th>
-                      <th className="text-right px-4 py-2 font-medium text-red-400">Hard Bounce</th>
+                      <th className="text-right px-4 py-2 font-medium text-yellow-400">Soft</th>
+                      <th className="text-right px-4 py-2 font-medium text-red-400">Hard</th>
+                      {hasSesData && <th className="text-right px-4 py-2 font-medium text-green-300">Delivered</th>}
+                      {hasSesData && <th className="text-right px-4 py-2 font-medium text-purple-400">Opened</th>}
+                      {hasSesData && <th className="text-right px-4 py-2 font-medium text-cyan-400">Clicked</th>}
+                      {hasSesData && <th className="text-right px-4 py-2 font-medium text-orange-400">Complaints</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -1326,6 +1369,10 @@ function AnalyticsTab() {
                         <td className="px-4 py-2 text-right text-red-400">{r.failed || '—'}</td>
                         <td className="px-4 py-2 text-right text-yellow-400">{r.softBounce || '—'}</td>
                         <td className="px-4 py-2 text-right text-red-400">{r.hardBounce || '—'}</td>
+                        {hasSesData && <td className="px-4 py-2 text-right text-green-300">{r.delivered || '—'}</td>}
+                        {hasSesData && <td className="px-4 py-2 text-right text-purple-400">{r.opened || '—'}</td>}
+                        {hasSesData && <td className="px-4 py-2 text-right text-cyan-400">{r.clicked || '—'}</td>}
+                        {hasSesData && <td className="px-4 py-2 text-right text-orange-400">{r.complained || '—'}</td>}
                       </tr>
                     ))}
                   </tbody>
@@ -1354,11 +1401,18 @@ function AnalyticsTab() {
                     <th className="text-right px-4 py-2 font-medium text-red-400">Failed</th>
                     <th className="text-right px-4 py-2 font-medium text-yellow-400">Soft</th>
                     <th className="text-right px-4 py-2 font-medium text-red-400">Hard</th>
+                    {hasSesData && <th className="text-right px-4 py-2 font-medium text-green-300">Delivered</th>}
+                    {hasSesData && <th className="text-right px-4 py-2 font-medium text-purple-400">Opens</th>}
+                    {hasSesData && <th className="text-right px-4 py-2 font-medium text-cyan-400">Clicks</th>}
+                    {hasSesData && <th className="text-right px-4 py-2 font-medium text-orange-400">Complaints</th>}
                     <th className="text-right px-4 py-2 font-medium text-gray-400">Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {campaigns.map(c => (
+                  {campaigns.map(c => {
+                    const openPct = c.delivered > 0 ? Math.round(c.opened / c.delivered * 100) : null;
+                    const clickPct = c.delivered > 0 ? Math.round(c.clicked / c.delivered * 100) : null;
+                    return (
                     <tr key={c.id} className="border-t border-gray-700 hover:bg-gray-700/30">
                       <td className="px-4 py-2 max-w-[220px]">
                         {c.name && <span className="text-purple-400 italic block text-[10px]">{c.name}</span>}
@@ -1372,12 +1426,25 @@ function AnalyticsTab() {
                       <td className="px-4 py-2 text-right text-red-400">{c.failed || '—'}</td>
                       <td className="px-4 py-2 text-right text-yellow-400">{c.softBounce || '—'}</td>
                       <td className="px-4 py-2 text-right text-red-400">{c.hardBounce || '—'}</td>
+                      {hasSesData && <td className="px-4 py-2 text-right text-green-300">{c.delivered || '—'}</td>}
+                      {hasSesData && (
+                        <td className="px-4 py-2 text-right text-purple-400">
+                          {c.opened ? `${c.opened}${openPct !== null ? ` (${openPct}%)` : ''}` : '—'}
+                        </td>
+                      )}
+                      {hasSesData && (
+                        <td className="px-4 py-2 text-right text-cyan-400">
+                          {c.clicked ? `${c.clicked}${clickPct !== null ? ` (${clickPct}%)` : ''}` : '—'}
+                        </td>
+                      )}
+                      {hasSesData && <td className="px-4 py-2 text-right text-orange-400">{c.complained || '—'}</td>}
                       <td className="px-4 py-2 text-right text-gray-400">{c.total || '—'}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   {campaigns.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-6 text-gray-500 text-center">No campaigns yet.</td>
+                      <td colSpan={hasSesData ? 12 : 8} className="px-4 py-6 text-gray-500 text-center">No campaigns yet.</td>
                     </tr>
                   )}
                 </tbody>

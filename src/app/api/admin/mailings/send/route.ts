@@ -195,7 +195,8 @@ async function sendCampaign(campaignId: string) {
       const textBody = campaign.bodyMarkdown + unsubText;
 
       try {
-        await transporter.sendMail({
+        const configSet = process.env.SES_CONFIGURATION_SET;
+        const info = await transporter.sendMail({
           from: campaign.fromName
             ? `"${campaign.fromName}" <${campaign.fromEmail}>`
             : campaign.fromEmail,
@@ -203,10 +204,14 @@ async function sendCampaign(campaignId: string) {
           subject: campaign.subject,
           html: htmlBody,
           text: textBody,
+          ...(configSet ? { headers: { 'X-SES-CONFIGURATION-SET': configSet } } : {}),
         });
+        // Store the SES messageId so SNS event callbacks can be matched back
+        const rawId = (info as { messageId?: string }).messageId ?? '';
+        const sesMessageId = rawId.replace(/^<|>$/g, '') || null;
         await prisma.emailSend.update({
           where: { id: send.id },
-          data: { status: 'sent', sentAt: new Date() },
+          data: { status: 'sent', sentAt: new Date(), sesMessageId },
         });
         await prisma.emailCampaign.update({
           where: { id: campaignId },

@@ -217,6 +217,37 @@ async function init() {
   await runSafe(prisma, 'EmailSend.idx_sentAt', () =>
     prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmailSend_sentAt_idx" ON "EmailSend" ("sentAt")`)
   );
+  // SES event tracking columns
+  await runSafe(prisma, 'EmailSend.sesMessageId migration', () =>
+    prisma.$executeRawUnsafe(`ALTER TABLE "EmailSend" ADD COLUMN "sesMessageId" TEXT`)
+  );
+  await runSafe(prisma, 'EmailSend.sesMessageId index', () =>
+    prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmailSend_sesMessageId_idx" ON "EmailSend" ("sesMessageId")`)
+  );
+  await runSafe(prisma, 'EmailSend.delivered migration', () =>
+    prisma.$executeRawUnsafe(`ALTER TABLE "EmailSend" ADD COLUMN "delivered" BOOLEAN NOT NULL DEFAULT false`)
+  );
+  await runSafe(prisma, 'EmailSend.deliveredAt migration', () =>
+    prisma.$executeRawUnsafe(`ALTER TABLE "EmailSend" ADD COLUMN "deliveredAt" DATETIME`)
+  );
+  await runSafe(prisma, 'EmailSend.opened migration', () =>
+    prisma.$executeRawUnsafe(`ALTER TABLE "EmailSend" ADD COLUMN "opened" BOOLEAN NOT NULL DEFAULT false`)
+  );
+  await runSafe(prisma, 'EmailSend.openedAt migration', () =>
+    prisma.$executeRawUnsafe(`ALTER TABLE "EmailSend" ADD COLUMN "openedAt" DATETIME`)
+  );
+  await runSafe(prisma, 'EmailSend.clicked migration', () =>
+    prisma.$executeRawUnsafe(`ALTER TABLE "EmailSend" ADD COLUMN "clicked" BOOLEAN NOT NULL DEFAULT false`)
+  );
+  await runSafe(prisma, 'EmailSend.clickedAt migration', () =>
+    prisma.$executeRawUnsafe(`ALTER TABLE "EmailSend" ADD COLUMN "clickedAt" DATETIME`)
+  );
+  await runSafe(prisma, 'EmailSend.complained migration', () =>
+    prisma.$executeRawUnsafe(`ALTER TABLE "EmailSend" ADD COLUMN "complained" BOOLEAN NOT NULL DEFAULT false`)
+  );
+  await runSafe(prisma, 'EmailSend.complainedAt migration', () =>
+    prisma.$executeRawUnsafe(`ALTER TABLE "EmailSend" ADD COLUMN "complainedAt" DATETIME`)
+  );
   console.log('Mailing tables ready');
 
   // Migrate: update existing hints with old 0.01 cost to 0.00001

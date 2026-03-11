@@ -122,14 +122,24 @@ model EmailCampaign {
 }
 
 model EmailSend {
-  id           String        @id @default(uuid())
-  campaignId   String
-  email        String
-  name         String?
-  status       String        @default("pending")
-  bounceType   String?       // 'soft' | 'hard' | null
-  error        String?
-  sentAt       DateTime?
-  createdAt    DateTime      @default(now())
-  campaign     EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  id            String        @id @default(uuid())
+  campaignId    String
+  email         String
+  name          String?
+  status        String        @default("pending")
+  bounceType    String?       // 'soft' | 'hard' | null
+  error         String?
+  sentAt        DateTime?
+  createdAt     DateTime      @default(now())
+  // SES event tracking
+  sesMessageId  String?
+  delivered     Boolean       @default(false)
+  deliveredAt   DateTime?
+  opened        Boolean       @default(false)
+  openedAt      DateTime?
+  clicked       Boolean       @default(false)
+  clickedAt     DateTime?
+  complained    Boolean       @default(false)
+  complainedAt  DateTime?
+  campaign      EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
